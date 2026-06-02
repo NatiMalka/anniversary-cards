@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" href="%sveltekit.assets%/favicon.png" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+		<meta name="theme-color" content="#1a0b2e" />
+
+		<!-- Hebrew font -->
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			rel="stylesheet"
+			href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Frank+Ruhl+Libre:wght@400;500;700;900&display=swap"
+		/>
+
+		<!-- holographic card engine styles (ported from pokemon-cards-css, GPLv3 © Simon Goellner) -->
+		<link rel="stylesheet" href="%sveltekit.assets%/css/cards/base.css" />
+		<link rel="stylesheet" href="%sveltekit.assets%/css/cards.css" />
+		<link rel="stylesheet" href="%sveltekit.assets%/css/cards/basic.css" />
+		<link rel="stylesheet" href="%sveltekit.assets%/css/cards/reverse-holo.css" />
+		<link rel="stylesheet" href="%sveltekit.assets%/css/cards/regular-holo.css" />
+		<link rel="stylesheet" href="%sveltekit.assets%/css/cards/cosmos-holo.css" />
+		<link rel="stylesheet" href="%sveltekit.assets%/css/cards/amazing-rare.css" />
+		<link rel="stylesheet" href="%sveltekit.assets%/css/cards/radiant-holo.css" />
+		<link rel="stylesheet" href="%sveltekit.assets%/css/cards/v-regular.css" />
+		<link rel="stylesheet" href="%sveltekit.assets%/css/cards/v-full-art.css" />
+		<link rel="stylesheet" href="%sveltekit.assets%/css/cards/v-max.css" />
+		<link rel="stylesheet" href="%sveltekit.assets%/css/cards/v-star.css" />
+		<link rel="stylesheet" href="%sveltekit.assets%/css/cards/trainer-full-art.css" />
+		<link rel="stylesheet" href="%sveltekit.assets%/css/cards/rainbow-holo.css" />
+		<link rel="stylesheet" href="%sveltekit.assets%/css/cards/rainbow-alt.css" />
+		<link rel="stylesheet" href="%sveltekit.assets%/css/cards/secret-rare.css" />
+		<link rel="stylesheet" href="%sveltekit.assets%/css/cards/trainer-gallery-holo.css" />
+		<link rel="stylesheet" href="%sveltekit.assets%/css/cards/trainer-gallery-v-regular.css" />
+		<link rel="stylesheet" href="%sveltekit.assets%/css/cards/trainer-gallery-v-max.css" />
+		<link rel="stylesheet" href="%sveltekit.assets%/css/cards/trainer-gallery-secret-rare.css" />
+		<link rel="stylesheet" href="%sveltekit.assets%/css/cards/shiny-rare.css" />
+		<link rel="stylesheet" href="%sveltekit.assets%/css/cards/shiny-v.css" />
+		<link rel="stylesheet" href="%sveltekit.assets%/css/cards/shiny-vmax.css" />
+		<link rel="stylesheet" href="%sveltekit.assets%/css/cards/swsh-pikachu.css" />
+		<!-- app-specific overrides: full-art (no art-window clip) — must load last -->
+		<link rel="stylesheet" href="%sveltekit.assets%/css/cards/_fullart.css?v=3" />
+
+		%sveltekit.head%
+	</head>
+	<body data-sveltekit-preload-data="hover">
+		<div style="display: contents">%sveltekit.body%</div>
+	</body>
+</html>

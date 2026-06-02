@@ -1,0 +1,57 @@
+/*
+
+  FULL-ART OVERRIDES (anniversary-cards)
+
+  The "rare holo", "rare holo cosmos" and "reverse holo" effects ship clipped
+  to a real Pokémon card's rectangular art-window (via --clip / --clip-invert).
+  Our cards are full-bleed photos, so we drop the clip and let the holographic
+  shine + glare cover the whole card — like a full-art card.
+
+  Loaded LAST in app.html so it wins the cascade. Scoped to the un-subtyped
+  "basic" cards we use; the stage/supporter/item window clips are left intact
+  for any future use.
+
+*/
+
+.card[data-rarity='rare holo'] .card__shine,
+.card[data-rarity='rare holo cosmos'] .card__shine,
+.card:not(.masked)[data-rarity$='reverse holo'] .card__shine {
+	clip-path: none !important;
+}
+
+.card[data-rarity='rare holo'] .card__glare:after,
+.card[data-rarity='rare holo cosmos'] .card__glare:after,
+.card[data-rarity$='reverse holo'] .card__glare:after {
+	clip-path: none !important;
+}
+
+/*
+  CRISP FACES ON HI-DPI:
+  the engine forces `backface-visibility: hidden` on every face element and
+  promotes the photo to its own 3D layer (`translate3d`). On retina/hi-DPI this
+  makes the layer rasterize at CSS (1x) resolution, so photos AND any baked-in
+  text (e.g. a flat cardconjurer import) look soft even at rest. We undo that so
+  faces paint at full device resolution. (We never flip the front to its back,
+  so visible backfaces are harmless.)
+*/
+.card__front,
+.card__front * {
+	-webkit-backface-visibility: visible;
+	backface-visibility: visible;
+}
+.card__rotator img:not(.card__back) {
+	transform: none;
+}
+
+/*
+  CRISP WHEN ZOOMED (popover):
+  the engine keeps `will-change: transform` on the translater/rotator, so the
+  card is cached as a texture and the popover's scale(1.75) upscales that
+  bitmap — blurring the photo and text. While a card is `.active` we drop
+  will-change so it re-rasterizes at the enlarged size once the zoom settles.
+*/
+.card.active .card__translater,
+.card.active .card__rotator {
+	will-change: auto;
+}
+
