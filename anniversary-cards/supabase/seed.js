@@ -12,6 +12,36 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false }
 });
 
+async function findUserByEmail(email) {
+  let page = 1;
+  while (true) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 200 });
+    if (error) throw error;
+    const user = data.users.find((u) => u.email === email);
+    if (user) return user;
+    if (data.users.length < 200) return null;
+    page++;
+  }
+}
+
+async function syncProfile(userId, metadata) {
+  const { error: authError } = await supabase.auth.admin.updateUserById(userId, {
+    user_metadata: metadata
+  });
+  if (authError) throw authError;
+
+  const { error: profileError } = await supabase.from('profiles').upsert(
+    {
+      id: userId,
+      name: metadata.name,
+      role: metadata.role,
+      avatar: metadata.avatar
+    },
+    { onConflict: 'id' }
+  );
+  if (profileError) throw profileError;
+}
+
 async function createUser(email, password, metadata) {
   const { data, error } = await supabase.auth.admin.createUser({
     email,
@@ -21,10 +51,22 @@ async function createUser(email, password, metadata) {
   });
   if (error) {
     if (error.message.includes('already been registered')) {
-      console.log(`  ℹ  ${email} already exists — skipping`);
-    } else {
-      console.error(`  ✗  ${email}: ${error.message}`);
+      console.log(`  ℹ  ${email} already exists — syncing profile`);
+      try {
+        const existing = await findUserByEmail(email);
+        if (!existing) {
+          console.error(`  ✗  ${email}: could not find auth user to sync`);
+          return null;
+        }
+        await syncProfile(existing.id, metadata);
+        console.log(`  ✓  ${email} synced (${metadata.role})`);
+        return existing;
+      } catch (syncError) {
+        console.error(`  ✗  ${email} sync:`, syncError.message);
+        return null;
+      }
     }
+    console.error(`  ✗  ${email}: ${error.message}`);
     return null;
   }
   console.log(`  ✓  ${email} created (${data.user.id})`);

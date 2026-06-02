@@ -214,8 +214,37 @@ input, select, textarea { font-family: inherit; }
   padding-top: calc(var(--nav-top-h) + var(--sp-6));
   padding-bottom: calc(var(--nav-bot-h) + var(--sp-8));
 }
+.page.home {
+  max-width: 1100px;
+  padding-top: calc(var(--nav-top-h) + var(--sp-3));
+  padding-bottom: calc(var(--nav-bot-h) + var(--sp-4));
+}
 @media (min-width: 768px) {
-  .page { padding: var(--sp-8) var(--sp-8); padding-top: calc(var(--nav-top-h) + var(--sp-8)); }
+  .page {
+    padding: var(--sp-8) var(--sp-8);
+    padding-top: calc(var(--nav-top-h) + var(--sp-8));
+    padding-bottom: var(--sp-8);
+  }
+  .page.home {
+    padding-top: calc(var(--nav-top-h) + var(--sp-8));
+    padding-bottom: var(--sp-8);
+  }
+}
+
+/* ── Dashboard cards (home + stats) ─────────────────────────── */
+.dashboard-card {
+  background: var(--bg-2);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-lg);
+}
+
+.section-eyebrow {
+  margin: 0;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
 }
 
 /* ── Button system ───────────────────────────────────────────── */

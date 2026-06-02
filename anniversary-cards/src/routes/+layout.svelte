@@ -4,6 +4,7 @@
   import { user, isAdmin } from '$lib/stores/user.js';
   import { wallet, freePacks, initWallet } from '$lib/stores/wallet.js';
   import { browser } from '$app/environment';
+  import { Gift, Heart, UserRound } from '@lucide/svelte';
 
   // Sync wallet store from server data on every navigation
   $: if (browser && $page.data.wallet) initWallet($page.data.wallet);
@@ -21,9 +22,11 @@
 
   $: navItems = $isAdmin ? [...baseNav, adminNav] : baseNav;
   $: path = $page.url.pathname;
+  $: isLogin = path === '/login';
 </script>
 
 <!-- ── Top bar ──────────────────────────────────────────────── -->
+{#if !isLogin}
 <header class="top-bar">
   <a class="brand" href="/">
     <span class="brand-decade">עשור</span>
@@ -35,33 +38,36 @@
     <div class="wallet-display">
       {#if freeLeft > 0}
         <span class="free-badge" title="{freeLeft} חבילות חינמיות">
-          🎁 ×{freeLeft}
+          <Gift size={14} strokeWidth={2.2} aria-hidden="true" />
+          <span>{freeLeft}</span>
         </span>
       {/if}
       <span class="hearts-display">
-        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16" aria-hidden="true">
-          <path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.59-3.968 4.464-4.447 5.726-4.447 2.54 0 5.274 1.621 5.274 5.181 0 4.069-5.136 8.625-11 14.402z"/>
-        </svg>
-        {hearts}
+        <Heart size={14} strokeWidth={2.4} fill="currentColor" aria-hidden="true" />
+        <span>{hearts}</span>
       </span>
     </div>
 
     <!-- User avatar + logout -->
     <form method="POST" action="/auth/logout" class="logout-form">
       <button type="submit" class="avatar-btn" title="התנתק">
-        <span class="avatar">{$user.avatar}</span>
+        <span class="avatar-icon" aria-hidden="true">
+          <UserRound size={14} strokeWidth={2.2} />
+        </span>
         <span class="avatar-name">{$user.name.split(' ')[0]}</span>
       </button>
     </form>
   </div>
 </header>
+{/if}
 
 <!-- ── Main content ─────────────────────────────────────────── -->
-<main>
+<main class:login-main={isLogin}>
   <slot />
 </main>
 
 <!-- ── Bottom tab bar ───────────────────────────────────────── -->
+{#if !isLogin}
 <nav class="bottom-nav" aria-label="ניווט ראשי">
   {#each navItems as item}
     <a
@@ -88,8 +94,14 @@
     </a>
   {/each}
 </nav>
+{/if}
 
 <style>
+  main.login-main {
+    min-height: 100dvh;
+    padding: 0;
+  }
+
   /* ── Top bar ───────────────────────────────────────────────── */
   .top-bar {
     position: fixed;
@@ -100,7 +112,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 0 var(--sp-4);
-    background: rgba(5, 3, 16, 0.7);
+    background: rgba(5, 5, 5, 0.78);
     border-bottom: 1px solid rgba(245,196,81,0.1);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
@@ -123,7 +135,7 @@
   .top-right {
     display: flex;
     align-items: center;
-    gap: var(--sp-3);
+    gap: var(--sp-2);
   }
 
   .wallet-display {
@@ -133,9 +145,13 @@
   }
 
   .free-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3em;
     font-size: var(--text-xs);
     font-weight: 700;
-    padding: 0.2em 0.6em;
+    min-height: 2rem;
+    padding: 0.25em 0.7em;
     background: rgba(245,196,81,0.15);
     border: 1px solid rgba(245,196,81,0.25);
     border-radius: var(--r-pill);
@@ -146,8 +162,9 @@
   .hearts-display {
     display: flex;
     align-items: center;
-    gap: 4px;
-    font-size: var(--text-sm);
+    gap: 0.3em;
+    min-height: 2rem;
+    font-size: var(--text-xs);
     font-weight: 700;
     color: var(--heart);
     background: rgba(232,77,107,0.12);
@@ -161,18 +178,57 @@
   .avatar-btn {
     display: flex;
     align-items: center;
-    gap: var(--sp-1);
+    gap: 0.35em;
     background: var(--glass);
     border: 1px solid var(--glass-border);
     border-radius: var(--r-pill);
-    padding: 0.3em 0.75em;
+    min-height: 2rem;
+    padding: 0.25em 0.7em;
     cursor: pointer;
     color: var(--ink);
     transition: all 0.18s ease;
   }
   .avatar-btn:hover { border-color: rgba(248,113,113,0.5); color: var(--ink-dim); }
-  .avatar      { font-size: 1.1rem; }
+  .avatar-icon {
+    display: grid;
+    place-items: center;
+    color: var(--gold);
+  }
   .avatar-name { font-size: var(--text-xs); font-weight: 600; color: var(--ink-dim); }
+
+  @media (max-width: 520px) {
+    .top-bar {
+      padding: 0 var(--sp-3);
+    }
+
+    .brand {
+      font-size: var(--text-lg);
+      gap: 0.22rem;
+    }
+
+    .brand-of {
+      font-size: var(--text-xs);
+    }
+
+    .top-right,
+    .wallet-display {
+      gap: var(--sp-1);
+    }
+
+    .free-badge,
+    .hearts-display,
+    .avatar-btn {
+      min-height: 1.8rem;
+      padding: 0.18em 0.55em;
+    }
+
+    .avatar-name {
+      max-width: 3.8rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
 
   /* ── Bottom nav ────────────────────────────────────────────── */
   .bottom-nav {
@@ -188,6 +244,12 @@
     border-top: 1px solid rgba(245,196,81,0.1);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
+  }
+
+  @media (min-width: 768px) {
+    .bottom-nav {
+      display: none;
+    }
   }
 
   .nav-tab {

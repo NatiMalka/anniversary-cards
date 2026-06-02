@@ -2,12 +2,14 @@
   import { enhance } from '$app/forms';
   export let form;
   let loading = false;
+  let email = '';
+  let password = '';
 </script>
 
 <svelte:head><title>כניסה — עשור של אהבה</title></svelte:head>
 
 <div class="wrap">
-  <div class="card">
+  <div class="login-card">
 
     <div class="brand">
       <span class="brand-decade">עשור</span>
@@ -27,12 +29,14 @@
       <div class="field">
         <label for="email">אימייל</label>
         <input id="email" name="email" type="email" dir="ltr"
+               bind:value={email}
                placeholder="your@email.com" required autocomplete="email" />
       </div>
 
       <div class="field">
         <label for="password">סיסמה</label>
         <input id="password" name="password" type="password" dir="ltr"
+               bind:value={password}
                placeholder="••••••••" required autocomplete="current-password" />
       </div>
 
@@ -52,7 +56,7 @@
     background: var(--bg-0);
   }
 
-  .card {
+  .login-card {
     width: 100%;
     max-width: 380px;
     background: var(--bg-2);
@@ -64,6 +68,7 @@
     flex-direction: column;
     gap: var(--sp-5);
     animation: fadeUp 0.4s var(--ease-out);
+    pointer-events: auto;
   }
 
   .brand {
@@ -127,6 +132,9 @@
     font-size: var(--text-sm);
     transition: border-color 0.15s ease;
     box-sizing: border-box;
+    pointer-events: auto;
+    user-select: text;
+    -webkit-user-select: text;
   }
   .field input:focus {
     outline: none;

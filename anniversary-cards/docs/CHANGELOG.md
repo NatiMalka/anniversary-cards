@@ -4,6 +4,32 @@ All notable progress on the Anniversary Cards app. Newest first.
 
 ---
 
+## 2026-06-02 — Vercel deploy, login fix & seed sync
+
+### Vercel deployment (production)
+- **Diagnosed** initial `404: NOT_FOUND` on Vercel — Git repo root is `anniversary-cards/` but the SvelteKit app lives in the nested `anniversary-cards/anniversary-cards/` folder. Fix: set **Root Directory** to `anniversary-cards` in Vercel project settings.
+- **Diagnosed** runtime crash `ERR_INVALID_MODULE_SPECIFIER` with encoded Windows paths (`Website\Weding-card\…`) — caused by a local `.vercel/output/` build (Windows paths) that had been committed to Git. Vercel was serving stale prebuilt output instead of building on Linux.
+- **Removed** `anniversary-cards/.vercel/` from Git tracking (~140 files).
+- **Added** `.vercel/` to root `.gitignore` so local Vercel build output is never committed again.
+- **Documented** required Vercel env vars for build + runtime: `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY` (and `SUPABASE_SERVICE_ROLE_KEY` for local seed only). Build fails at `$env/static/public` import if the two `PUBLIC_*` vars are missing.
+- **Added** `.env.example` — template listing all three env var names for local dev and Vercel setup.
+
+### Login form — inputs not accepting text
+- **Fixed** email/password fields on `/login` appearing focused but not accepting keyboard input. Root cause: login panel used `class="card"`, which collided with the globally loaded Pokémon holo engine CSS (`static/css/cards/base.css`) — `.card { pointer-events: none; aspect-ratio: … }` was applied to the login box.
+- **Renamed** login container class from `card` → `login-card` in `src/routes/login/+page.svelte`.
+- **Added** `bind:value` on email and password inputs (reliable typing in Svelte 5).
+- **Added** explicit `pointer-events: auto` and `user-select: text` on login inputs.
+- **Updated** `src/routes/+layout.svelte` — hide top bar and bottom tab bar on `/login` (`isLogin` guard); full-height `login-main` wrapper so nav chrome doesn't overlap the form.
+
+### Admin tab (ניהול) not visible after login
+- **Diagnosed** missing **ניהול** nav tab for Netanel — `isAdmin` reads `profiles.role === 'admin'` from Supabase (`src/lib/stores/user.js`), not from auth email alone. If `001_schema.sql` was not run in the Supabase SQL Editor, the `profiles` table doesn't exist and the app falls back to a default `{ role: 'user' }` profile.
+- **Setup reminder:** run `supabase/migrations/001_schema.sql` in Supabase SQL Editor, then `node supabase/seed.js`, then log out and back in.
+
+### Seed script — sync existing users
+- **Updated** `supabase/seed.js` — when a user already exists in auth (`already been registered`), the script no longer skips silently. It now finds the user via `auth.admin.listUsers`, updates `user_metadata`, and **upserts** the matching `profiles` row (name, role, avatar). Safe to re-run after migration to fix admin role for Netanel or refresh Almog's profile.
+
+---
+
 ## 2026-06-02
 
 ### Phase B — Supabase backend + real auth
@@ -24,6 +50,7 @@ All notable progress on the Anniversary Cards app. Newest first.
 
 #### Seed script (`supabase/seed.js`)
 - **Added** `node supabase/seed.js` — uses the service-role key to create Netanel (admin) and Almog (user) via `auth.admin.createUser` with `email_confirm: true` and `user_metadata` (name, role, avatar). The trigger auto-creates their profiles + wallets. Seeds 4 starter tasks. Safe to re-run.
+- _(See also **2026-06-02 — Vercel deploy, login fix & seed sync** above for existing-user profile sync on re-run.)_
 
 #### Stores — localStorage fully replaced
 - **Rewrote** `src/lib/stores/user.js` — now a `derived` store over `$page.data.profile`; no localStorage, no hardcoded users. `isAdmin` derived from `profile.role`.
