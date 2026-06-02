@@ -2,27 +2,25 @@
   import '../app.css';
   import { page } from '$app/stores';
   import { user, isAdmin } from '$lib/stores/user.js';
-  import { wallet, freePacks } from '$lib/stores/wallet.js';
+  import { wallet, freePacks, initWallet } from '$lib/stores/wallet.js';
   import { browser } from '$app/environment';
 
-  // reactive hearts balance for current user
-  $: hearts  = browser ? wallet.balance($user.id) : 0;
+  // Sync wallet store from server data on every navigation
+  $: if (browser && $page.data.wallet) initWallet($page.data.wallet);
+
+  $: hearts   = browser ? wallet.balance($user.id) : 0;
   $: freeLeft = browser ? freePacks.remaining($user.id) : freePacks.FREE_PER_DAY;
 
-  // nav items
   const baseNav = [
-    { href: '/',           label: 'בית',    icon: 'home'   },
-    { href: '/packs',      label: 'חבילות', icon: 'pack'   },
-    { href: '/album',      label: 'אלבום',  icon: 'album'  },
-    { href: '/tasks',      label: 'משימות', icon: 'tasks'  },
+    { href: '/',      label: 'בית',    icon: 'home'  },
+    { href: '/packs', label: 'חבילות', icon: 'pack'  },
+    { href: '/album', label: 'אלבום',  icon: 'album' },
+    { href: '/tasks', label: 'משימות', icon: 'tasks' },
   ];
   const adminNav = { href: '/admin', label: 'ניהול', icon: 'admin' };
 
   $: navItems = $isAdmin ? [...baseNav, adminNav] : baseNav;
   $: path = $page.url.pathname;
-
-  // user-switcher popover
-  let showSwitcher = false;
 </script>
 
 <!-- ── Top bar ──────────────────────────────────────────────── -->
@@ -34,7 +32,6 @@
   </a>
 
   <div class="top-right">
-    <!-- Hearts + free packs -->
     <div class="wallet-display">
       {#if freeLeft > 0}
         <span class="free-badge" title="{freeLeft} חבילות חינמיות">
@@ -49,39 +46,22 @@
       </span>
     </div>
 
-    <!-- User avatar / switcher -->
-    <button class="avatar-btn" on:click={() => (showSwitcher = !showSwitcher)}
-            aria-label="החלף משתמש">
-      <span class="avatar">{$user.avatar}</span>
-      <span class="avatar-name">{$user.name.split(' ')[0]}</span>
-    </button>
+    <!-- User avatar + logout -->
+    <form method="POST" action="/auth/logout" class="logout-form">
+      <button type="submit" class="avatar-btn" title="התנתק">
+        <span class="avatar">{$user.avatar}</span>
+        <span class="avatar-name">{$user.name.split(' ')[0]}</span>
+      </button>
+    </form>
   </div>
 </header>
-
-<!-- User switcher popover -->
-{#if showSwitcher}
-  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-  <div class="switcher-backdrop" on:click={() => (showSwitcher = false)}>
-    <div class="switcher-popup" on:click|stopPropagation>
-      <p class="switcher-label">בחר משתמש (POC)</p>
-      {#each Object.values(user.USERS) as u}
-        <button class="switcher-item" class:active={$user.id === u.id}
-                on:click={() => { user.switchTo(u.id); showSwitcher = false; }}>
-          <span>{u.avatar}</span>
-          <span>{u.name}</span>
-          {#if u.role === 'admin'}<span class="switcher-role">אדמין</span>{/if}
-        </button>
-      {/each}
-    </div>
-  </div>
-{/if}
 
 <!-- ── Main content ─────────────────────────────────────────── -->
 <main>
   <slot />
 </main>
 
-<!-- ── Bottom tab bar (mobile + desktop) ────────────────────── -->
+<!-- ── Bottom tab bar ───────────────────────────────────────── -->
 <nav class="bottom-nav" aria-label="ניווט ראשי">
   {#each navItems as item}
     <a
@@ -176,6 +156,8 @@
     padding: 0.25em 0.7em;
   }
 
+  .logout-form { margin: 0; padding: 0; }
+
   .avatar-btn {
     display: flex;
     align-items: center;
@@ -188,59 +170,9 @@
     color: var(--ink);
     transition: all 0.18s ease;
   }
-  .avatar-btn:hover { border-color: var(--gold-muted); }
-  .avatar { font-size: 1.1rem; }
+  .avatar-btn:hover { border-color: rgba(248,113,113,0.5); color: var(--ink-dim); }
+  .avatar      { font-size: 1.1rem; }
   .avatar-name { font-size: var(--text-xs); font-weight: 600; color: var(--ink-dim); }
-
-  /* ── User switcher ─────────────────────────────────────────── */
-  .switcher-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: calc(var(--z-nav) + 1);
-  }
-  .switcher-popup {
-    position: absolute;
-    top: calc(var(--nav-top-h) + 8px);
-    left: var(--sp-4);
-    background: var(--bg-2);
-    border: 1px solid var(--glass-gold-border);
-    border-radius: var(--r-md);
-    padding: var(--sp-3);
-    min-width: 180px;
-    box-shadow: 0 12px 40px rgba(0,0,0,0.6);
-    animation: fadeUp 0.2s var(--ease-out);
-  }
-  .switcher-label {
-    font-size: var(--text-xs);
-    color: var(--ink-dim);
-    margin: 0 0 var(--sp-2);
-    padding: 0 var(--sp-1);
-  }
-  .switcher-item {
-    display: flex;
-    align-items: center;
-    gap: var(--sp-2);
-    width: 100%;
-    padding: var(--sp-2) var(--sp-3);
-    border-radius: var(--r-sm);
-    border: none;
-    background: transparent;
-    color: var(--ink);
-    cursor: pointer;
-    font: inherit;
-    font-size: var(--text-sm);
-    transition: background 0.15s ease;
-  }
-  .switcher-item:hover  { background: var(--glass-md); }
-  .switcher-item.active { background: var(--glass-gold); }
-  .switcher-role {
-    margin-right: auto;
-    font-size: var(--text-xs);
-    color: var(--gold-dim);
-    background: rgba(245,196,81,0.12);
-    padding: 0.15em 0.4em;
-    border-radius: var(--r-pill);
-  }
 
   /* ── Bottom nav ────────────────────────────────────────────── */
   .bottom-nav {
@@ -274,12 +206,8 @@
     transition: color 0.18s ease;
   }
   .nav-tab:hover { color: var(--ink); }
-  .nav-tab.active {
-    color: var(--gold);
-  }
-  .nav-tab.active .tab-icon {
-    background: rgba(245,196,81,0.12);
-  }
+  .nav-tab.active { color: var(--gold); }
+  .nav-tab.active .tab-icon { background: rgba(245,196,81,0.12); }
 
   .tab-icon {
     width: 44px;
@@ -298,7 +226,6 @@
     letter-spacing: 0.02em;
   }
 
-  /* notification dot on tasks */
   .tab-dot {
     position: absolute;
     top: 4px;

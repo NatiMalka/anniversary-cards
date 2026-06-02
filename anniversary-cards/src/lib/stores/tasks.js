@@ -1,110 +1,122 @@
-/**
- * Tasks store — localStorage-backed for the POC.
- * Three task types: daily | special | secret
- * secret tasks reward a FREE PACK (not hearts) on completion.
- * In Phase B this will sync to Supabase tasks + task_completions tables.
- */
-import { writable, derived } from 'svelte/store';
+import { writable, derived, get } from 'svelte/store';
+import { supabase } from '$lib/supabase.js';
 import { browser } from '$app/environment';
 
-const TASKS_KEY       = 'ann_tasks_v1';
-const COMPLETIONS_KEY = 'ann_task_completions_v1';
-
-// ── Israel date key ───────────────────────────────────────────
 function israelDateKey() {
   const now    = new Date();
   const israel = new Date(now.getTime() + 3 * 60 * 60 * 1000);
   return israel.toISOString().split('T')[0];
 }
 
-// ── Seed tasks (shown until admin creates their own) ──────────
-const SEED_TASKS = [
-  { id: 'seed-1', type: 'daily',   title: 'לקחתי את הילד לגן בזמן',   description: '', reward: 5, rewardType: 'hearts', active: true, createdAt: 0 },
-  { id: 'seed-2', type: 'daily',   title: 'אמרתי "אני אוהב אותך" היום', description: '', reward: 3, rewardType: 'hearts', active: true, createdAt: 0 },
-  { id: 'seed-3', type: 'special', title: 'יצאנו לדייט שניים',           description: 'ערב זוגי ללא ילדים 💑', reward: 20, rewardType: 'hearts', active: true, createdAt: 0 },
-  { id: 'seed-4', type: 'secret',  title: '???',                          description: '', reward: 0, rewardType: 'free_pack', active: true, createdAt: 0 }
-];
-
-// ── Load / save ───────────────────────────────────────────────
-function loadTasks() {
-  if (!browser) return SEED_TASKS;
-  try {
-    const raw = localStorage.getItem(TASKS_KEY);
-    return raw ? JSON.parse(raw) : SEED_TASKS;
-  } catch { return SEED_TASKS; }
-}
-
-function loadCompletions() {
-  if (!browser) return {};
-  try { return JSON.parse(localStorage.getItem(COMPLETIONS_KEY)) || {}; }
-  catch { return {}; }
-}
-
-const tasksStore       = writable(loadTasks());
-const completionsStore = writable(loadCompletions());
-
-function saveTasks(v)       { if (browser) localStorage.setItem(TASKS_KEY, JSON.stringify(v)); }
-function saveCompletions(v) { if (browser) localStorage.setItem(COMPLETIONS_KEY, JSON.stringify(v)); }
-
-// ── Completion key ────────────────────────────────────────────
-// daily tasks: keyed by taskId + userId + date (resets daily)
-// special/secret: keyed by taskId + userId (one-time)
 function completionKey(task, userId) {
-  if (task.type === 'daily') return `${task.id}:${userId}:${israelDateKey()}`;
-  return `${task.id}:${userId}`;
+  return task.type === 'daily'
+    ? `${task.id}:${userId}:${israelDateKey()}`
+    : `${task.id}:${userId}:once`;
 }
 
-// ── Public API ────────────────────────────────────────────────
+function normalize(t) {
+  return {
+    id:          t.id,
+    title:       t.title,
+    description: t.description ?? '',
+    type:        t.type,
+    reward:      t.reward,
+    rewardType:  t.reward_type,
+    active:      t.active,
+    createdAt:   t.created_at
+  };
+}
+
+const tasksStore       = writable([]);
+const completionsStore = writable({});
+
+export async function loadTasks() {
+  if (!browser) return;
+  const { data, error } = await supabase.from('tasks').select('*').order('created_at');
+  if (!error && data) tasksStore.set(data.map(normalize));
+}
+
+export async function loadCompletions(userId) {
+  if (!browser || !userId) return;
+  const today = israelDateKey();
+  const { data, error } = await supabase
+    .from('task_completions')
+    .select('*')
+    .eq('user_id', userId)
+    .or(`period_key.eq.${today},period_key.eq.once`);
+  if (!error && data) {
+    const map = {};
+    for (const c of data) {
+      map[`${c.task_id}:${c.user_id}:${c.period_key}`] = c;
+    }
+    completionsStore.set(map);
+  }
+}
+
 export const tasks = {
   subscribe: tasksStore.subscribe,
 
-  addTask(taskData) {
-    const task = {
-      ...taskData,
-      id: `task-${Date.now()}`,
-      createdAt: Date.now()
-    };
-    tasksStore.update(t => {
-      const next = [...t, task];
-      saveTasks(next);
-      return next;
-    });
-    return task.id;
+  async addTask(taskData) {
+    const { data, error } = await supabase
+      .from('tasks')
+      .insert({
+        title:       taskData.title,
+        description: taskData.description ?? '',
+        type:        taskData.type,
+        reward:      taskData.reward,
+        reward_type: taskData.rewardType,
+        active:      taskData.active
+      })
+      .select()
+      .single();
+    if (!error && data) {
+      tasksStore.update((t) => [...t, normalize(data)]);
+      return data.id;
+    }
+    return null;
   },
 
-  updateTask(id, patch) {
-    tasksStore.update(t => {
-      const next = t.map(x => x.id === id ? { ...x, ...patch } : x);
-      saveTasks(next);
-      return next;
-    });
+  async updateTask(id, patch) {
+    const update = {};
+    if (patch.title       !== undefined) update.title       = patch.title;
+    if (patch.description !== undefined) update.description = patch.description;
+    if (patch.type        !== undefined) update.type        = patch.type;
+    if (patch.reward      !== undefined) update.reward      = patch.reward;
+    if (patch.rewardType  !== undefined) update.reward_type = patch.rewardType;
+    if (patch.active      !== undefined) update.active      = patch.active;
+    const { error } = await supabase.from('tasks').update(update).eq('id', id);
+    if (!error) tasksStore.update((t) => t.map((x) => (x.id === id ? { ...x, ...patch } : x)));
   },
 
-  deleteTask(id) {
-    tasksStore.update(t => {
-      const next = t.filter(x => x.id !== id);
-      saveTasks(next);
-      return next;
-    });
+  async deleteTask(id) {
+    const { error } = await supabase.from('tasks').delete().eq('id', id);
+    if (!error) tasksStore.update((t) => t.filter((x) => x.id !== id));
   },
 
-  /** Check if a user has completed a task */
-  isCompleted(task, userId, completions) {
-    return !!completions[completionKey(task, userId)];
+  isCompleted(task, userId) {
+    return !!get(completionsStore)[completionKey(task, userId)];
   },
 
-  /** Mark a task as completed; returns the reward info */
-  complete(task, userId) {
+  async complete(task, userId) {
     const key = completionKey(task, userId);
-    let alreadyDone = false;
-    completionsStore.update(c => {
-      if (c[key]) { alreadyDone = true; return c; }
-      const next = { ...c, [key]: { completedAt: Date.now(), reward: task.reward, rewardType: task.rewardType } };
-      saveCompletions(next);
-      return next;
-    });
-    if (alreadyDone) return null;
-    return { reward: task.reward, rewardType: task.rewardType };
+    if (get(completionsStore)[key]) return null;
+    const periodKey = task.type === 'daily' ? israelDateKey() : 'once';
+    const { data, error } = await supabase
+      .from('task_completions')
+      .insert({
+        task_id:     task.id,
+        user_id:     userId,
+        period_key:  periodKey,
+        reward:      task.reward,
+        reward_type: task.rewardType
+      })
+      .select()
+      .single();
+    if (!error && data) {
+      completionsStore.update((c) => ({ ...c, [key]: data }));
+      return { reward: task.reward, rewardType: task.rewardType };
+    }
+    return null;
   }
 };
 
@@ -113,7 +125,6 @@ export const completions = {
   key: completionKey
 };
 
-// ── Derived views ─────────────────────────────────────────────
-export const dailyTasks   = derived(tasksStore, $t => $t.filter(t => t.type === 'daily'   && t.active));
-export const specialTasks = derived(tasksStore, $t => $t.filter(t => t.type === 'special' && t.active));
-export const secretTasks  = derived(tasksStore, $t => $t.filter(t => t.type === 'secret'  && t.active));
+export const dailyTasks   = derived(tasksStore, ($t) => $t.filter((t) => t.type === 'daily'   && t.active));
+export const specialTasks = derived(tasksStore, ($t) => $t.filter((t) => t.type === 'special' && t.active));
+export const secretTasks  = derived(tasksStore, ($t) => $t.filter((t) => t.type === 'secret'  && t.active));

@@ -4,6 +4,54 @@ All notable progress on the Anniversary Cards app. Newest first.
 
 ---
 
+## 2026-06-02
+
+### Phase B — Supabase backend + real auth
+
+#### Auth & session
+- **Added** `src/hooks.server.js` — Supabase SSR middleware: creates a server-side client on every request, exposes `locals.supabase` + `locals.safeGetSession()`, and redirects unauthenticated requests to `/login` (all routes except `/login` are guarded).
+- **Added** `src/routes/login/+page.svelte` + `+page.server.js` — luxury-styled Hebrew login form (email + password); SvelteKit `enhance` for progressive enhancement; error handling in Hebrew; already-logged-in users are redirected to `/`.
+- **Added** `src/routes/auth/logout/+server.js` — POST endpoint that calls `supabase.auth.signOut()` and redirects to `/login`.
+- **Added** `src/routes/+layout.server.js` — loads `session`, `profile`, and `wallet` from Supabase on every navigation; passed down as `$page.data`.
+- **Added** `src/routes/admin/+layout.server.js` — server-side admin guard: non-admin profiles are redirected to `/` before any admin page renders.
+- **Replaced** the POC user-switcher popover in `+layout.svelte` with a logout button (POST to `/auth/logout`). The avatar + name still display from the real session profile.
+
+#### Database schema (`supabase/migrations/001_schema.sql`)
+- **Created** 6 tables with full RLS: `profiles`, `wallets`, `tasks`, `task_completions`, `cards`, `user_collection`.
+- **Created** trigger `on_auth_user_created` → `handle_new_user()`: auto-inserts a profile row and a wallet (50 ♥ default) for every new Supabase auth user. Profile `name`, `role`, and `avatar` are read from `user_metadata` set at signup.
+- **Created** RPC `add_to_collection(p_user_id, p_card_id, p_card_number)`: atomic upsert that inserts a new collection entry (count = 1) or increments `count` on conflict — prevents double-insert race conditions.
+- **Created** `card-photos` public Storage bucket with policies: authenticated users can upload, anyone can read, admin can delete.
+
+#### Seed script (`supabase/seed.js`)
+- **Added** `node supabase/seed.js` — uses the service-role key to create Netanel (admin) and Almog (user) via `auth.admin.createUser` with `email_confirm: true` and `user_metadata` (name, role, avatar). The trigger auto-creates their profiles + wallets. Seeds 4 starter tasks. Safe to re-run.
+
+#### Stores — localStorage fully replaced
+- **Rewrote** `src/lib/stores/user.js` — now a `derived` store over `$page.data.profile`; no localStorage, no hardcoded users. `isAdmin` derived from `profile.role`.
+- **Rewrote** `src/lib/stores/wallet.js` — writable store initialised from `$page.data.wallet` (via `initWallet()` called reactively in `+layout.svelte`). `wallet.credit()` / `wallet.debit()` / `wallet.reset()` are now async and write to the `wallets` table; store updates locally on success for instant UI feedback. `freePacks.use()` async; daily reset logic unchanged (Israel UTC+3).
+- **Rewrote** `src/lib/stores/tasks.js` — exports `loadTasks()` and `loadCompletions(userId)` for on-demand async fetching. `tasks.addTask()` / `updateTask()` / `deleteTask()` / `complete()` are all async and write to Supabase. Completion keys are consistent with the DB `period_key` column (`YYYY-MM-DD` for daily, `once` for special/secret). DB column `reward_type` normalised to camelCase `rewardType` in the store.
+- **Rewrote** `src/lib/stores/collection.js` — exports `loadCollection(userId)`. `collection.addCard()` upserts the card in the `cards` pool (via `onConflict: card_number`) then calls the `add_to_collection` RPC. `removeCard()` and `reset()` delete from `user_collection`. Derived stores (`collectedCards`, `collectedCount`, `collectionYears`) unchanged in API.
+- **Added** `src/lib/supabase.js` — browser-side `createBrowserClient` singleton (env vars `PUBLIC_SUPABASE_URL` + `PUBLIC_SUPABASE_ANON_KEY`).
+
+#### Pages updated for async stores
+- **Updated** `src/routes/tasks/+page.svelte` — `onMount` calls `loadTasks()` + `loadCompletions($user.id)`; `claim()` is now `async`, awaits `tasks.complete()`; loading state shown while fetching.
+- **Updated** `src/routes/admin/tasks/+page.svelte` — `onMount` calls `loadTasks()`; `saveTask()`, `deleteTask()`, `toggleActive()` are all async; saving spinner on submit button.
+- **Updated** `src/routes/album/+page.svelte` — `onMount` calls `loadCollection($user.id)`; `clearCollection()` async; loading state.
+- **Updated** `src/routes/admin/card-editor/+page.svelte` — tracks `selectedFile` separately from the preview data URL; on save, uploads the file to Supabase Storage (`card-photos` bucket, path `cards/{number}_{timestamp}.ext`) and stores the public URL in `cards.photo_url`; falls back to the typed URL if no file was picked. `saveCard()` async with saving state on button.
+
+#### Admin cleanup page (`/admin/cleanup`)
+- **Added** full data-management screen at `/admin/cleanup` (linked from the admin hub).
+- Per-user actions (shown for all profiles): **Reset wallet** (→ 50 ♥, clear daily free-pack counter), **Clear collection** (delete all `user_collection` rows), **Clear task completions** (delete all `task_completions` rows), **Full reset** (all three at once, with confirmation).
+- Per-card actions: lists the entire `cards` pool; admin can **delete** any card (cascades to `user_collection` via FK).
+- All actions show a Hebrew toast on success/error; buttons show a busy state while the Supabase call is in flight.
+
+#### Infrastructure
+- **Switched** `svelte.config.js` from `adapter-auto` to `@sveltejs/adapter-vercel`.
+- **Added** `.env` with `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
+- **Added** `.env` to `.gitignore`.
+- **Installed** `@supabase/ssr`, `@supabase/supabase-js`, `@sveltejs/adapter-vercel`.
+
+---
+
 ## 2026-06-01
 
 ### Design: full purple purge — black / gold / silver only

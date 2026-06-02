@@ -16,6 +16,9 @@
     "vite": "^5.4.0"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.10.3",
+    "@supabase/supabase-js": "^2.106.2",
+    "@sveltejs/adapter-vercel": "^6.3.3",
     "three": "^0.184.0"
   }
 }

@@ -1,78 +1,87 @@
-/**
- * Client-side collection store — backed by localStorage for the POC.
- * In Phase B this will sync to Supabase user_collection.
- *
- * Shape: { [cardNumber: string]: CardEntry }
- * CardEntry: { cardNumber, effect, photo, title, date, description, rarityTier, year, isFlat, count }
- */
-import { writable, derived } from 'svelte/store';
+import { writable, derived, get } from 'svelte/store';
+import { supabase } from '$lib/supabase.js';
 import { browser } from '$app/environment';
 
-const KEY = 'ann_collection_v1';
+const collectionStore = writable({});
 
-function load() {
-	if (!browser) return {};
-	try {
-		return JSON.parse(localStorage.getItem(KEY) || '{}');
-	} catch {
-		return {};
-	}
+export async function loadCollection(userId) {
+  if (!browser || !userId) return;
+  const { data, error } = await supabase
+    .from('user_collection')
+    .select('*, cards(*)')
+    .eq('user_id', userId);
+  if (!error && data) {
+    const map = {};
+    for (const item of data) {
+      const c = item.cards;
+      map[String(c.card_number)] = {
+        cardNumber:  c.card_number,
+        effect:      c.effect,
+        photo:       c.photo_url,
+        title:       c.title,
+        date:        c.date,
+        description: c.description,
+        rarityTier:  c.rarity_tier,
+        year:        c.year,
+        isFlat:      c.is_flat,
+        count:       item.count,
+        cardId:      c.id,
+        collectionId: item.id
+      };
+    }
+    collectionStore.set(map);
+  }
 }
 
-function save(data) {
-	if (!browser) return;
-	try {
-		localStorage.setItem(KEY, JSON.stringify(data));
-	} catch {}
-}
+export const collection = {
+  subscribe: collectionStore.subscribe,
 
-function createCollection() {
-	const { subscribe, update, set } = writable(load());
+  /** Upsert card in pool + add to user's album (increment count if duplicate). */
+  async addCard(cardData, userId) {
+    const { data: card, error: cardError } = await supabase
+      .from('cards')
+      .upsert({
+        card_number: cardData.cardNumber,
+        title:       cardData.title,
+        description: cardData.description ?? '',
+        date:        cardData.date ?? '',
+        effect:      cardData.effect,
+        rarity_tier: cardData.rarityTier,
+        is_flat:     cardData.isFlat,
+        photo_url:   cardData.photo,
+        year:        cardData.year ?? String(cardData.date ?? '')
+      }, { onConflict: 'card_number' })
+      .select()
+      .single();
+    if (cardError) return false;
 
-	return {
-		subscribe,
+    const { error: rpcError } = await supabase.rpc('add_to_collection', {
+      p_user_id:     userId,
+      p_card_id:     card.id,
+      p_card_number: cardData.cardNumber
+    });
+    if (!rpcError) await loadCollection(userId);
+    return !rpcError;
+  },
 
-		/** Add or increment a card in the collection. */
-		addCard(cardData) {
-			update((col) => {
-				const n = String(cardData.cardNumber);
-				const existing = col[n];
-				const next = { ...col, [n]: { ...cardData, count: (existing?.count ?? 0) + 1 } };
-				save(next);
-				return next;
-			});
-		},
+  async removeCard(cardNumber, userId) {
+    const entry = get(collectionStore)[String(cardNumber)];
+    if (!entry) return;
+    const { error } = await supabase.from('user_collection').delete().eq('id', entry.collectionId);
+    if (!error) collectionStore.update((c) => { const n = { ...c }; delete n[String(cardNumber)]; return n; });
+  },
 
-		/** Remove a card from the collection entirely. */
-		removeCard(cardNumber) {
-			update((col) => {
-				const next = { ...col };
-				delete next[String(cardNumber)];
-				save(next);
-				return next;
-			});
-		},
+  async reset(userId) {
+    const { error } = await supabase.from('user_collection').delete().eq('user_id', userId);
+    if (!error) collectionStore.set({});
+  }
+};
 
-		/** Wipe everything (dev / reset). */
-		reset() {
-			if (browser) localStorage.removeItem(KEY);
-			set({});
-		}
-	};
-}
-
-export const collection = createCollection();
-
-/** Sorted list of all cards in the collection. */
-export const collectedCards = derived(collection, ($col) =>
-	Object.values($col).sort((a, b) => a.cardNumber - b.cardNumber)
+export const collectedCards = derived(collectionStore, ($col) =>
+  Object.values($col).sort((a, b) => a.cardNumber - b.cardNumber)
 );
-
-/** How many unique slots are filled. */
-export const collectedCount = derived(collection, ($col) => Object.keys($col).length);
-
-/** Unique years present in the collection, sorted desc. */
-export const collectionYears = derived(collection, ($col) => {
-	const years = [...new Set(Object.values($col).map((c) => c.year).filter(Boolean))];
-	return years.sort((a, b) => b - a);
+export const collectedCount = derived(collectionStore, ($col) => Object.keys($col).length);
+export const collectionYears = derived(collectionStore, ($col) => {
+  const years = [...new Set(Object.values($col).map((c) => c.year).filter(Boolean))];
+  return years.sort((a, b) => b - a);
 });

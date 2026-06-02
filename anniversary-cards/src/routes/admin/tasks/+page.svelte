@@ -1,25 +1,23 @@
 <script>
-  import { tasks, dailyTasks, specialTasks, secretTasks } from '$lib/stores/tasks.js';
-  import { isAdmin } from '$lib/stores/user.js';
-  import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
+  import { loadTasks, tasks, dailyTasks, specialTasks, secretTasks } from '$lib/stores/tasks.js';
 
-  onMount(() => { if (!$isAdmin) goto('/'); });
-
-  // ── Form state ────────────────────────────────────────────────
-  let form = { title: '', description: '', type: 'daily', reward: 5, rewardType: 'hearts', active: true };
-  let editId = null;
-  let saved = '';
+  let form    = { title: '', description: '', type: 'daily', reward: 5, rewardType: 'hearts', active: true };
+  let editId  = null;
+  let saved   = '';
   let showForm = false;
+  let saving  = false;
+
+  onMount(async () => { await loadTasks(); });
 
   const TYPES = [
-    { value: 'daily',   label: '📅 יומית',    hint: 'מתחדשת כל בוקר' },
-    { value: 'special', label: '⭐ מיוחדת',   hint: 'חד פעמית' },
-    { value: 'secret',  label: '🔐 סודית',    hint: 'פרס: חבילה חינמית' },
+    { value: 'daily',   label: '📅 יומית',  hint: 'מתחדשת כל בוקר' },
+    { value: 'special', label: '⭐ מיוחדת', hint: 'חד פעמית' },
+    { value: 'secret',  label: '🔐 סודית',  hint: 'פרס: חבילה חינמית' },
   ];
 
   function newTask() {
-    form  = { title: '', description: '', type: 'daily', reward: 5, rewardType: 'hearts', active: true };
+    form   = { title: '', description: '', type: 'daily', reward: 5, rewardType: 'hearts', active: true };
     editId = null;
     showForm = true;
   }
@@ -31,28 +29,30 @@
     showForm = true;
   }
 
-  function saveTask() {
-    if (!form.title.trim()) return;
+  async function saveTask() {
+    if (!form.title.trim() || saving) return;
     if (form.type === 'secret') form.rewardType = 'free_pack';
+    saving = true;
     if (editId) {
-      tasks.updateTask(editId, form);
+      await tasks.updateTask(editId, form);
       saved = '✅ משימה עודכנה!';
     } else {
-      tasks.addTask(form);
+      await tasks.addTask(form);
       saved = '✅ משימה נוצרה!';
     }
+    saving   = false;
     showForm = false;
     editId   = null;
     setTimeout(() => (saved = ''), 3000);
   }
 
-  function deleteTask(id) {
+  async function deleteTask(id) {
     if (!confirm('למחוק את המשימה?')) return;
-    tasks.deleteTask(id);
+    await tasks.deleteTask(id);
   }
 
-  function toggleActive(task) {
-    tasks.updateTask(task.id, { active: !task.active });
+  async function toggleActive(task) {
+    await tasks.updateTask(task.id, { active: !task.active });
   }
 
   $: allTasks = [...$dailyTasks, ...$specialTasks, ...$secretTasks,
@@ -75,7 +75,6 @@
 
   {#if saved}<p class="saved-msg">{saved}</p>{/if}
 
-  <!-- ── Create / Edit form ──────────────────────────────────── -->
   {#if showForm}
     <div class="form-card surface-gold">
       <h2 class="form-title">{editId ? '✏️ עריכת משימה' : '✨ משימה חדשה'}</h2>
@@ -101,7 +100,7 @@
                 type="button"
                 class="type-btn"
                 class:active={form.type === t.value}
-                on:click={() => { form.type = t.value; if (t.value === 'secret') form.rewardType = 'free_pack'; else form.rewardType = 'hearts'; }}
+                on:click={() => { form.type = t.value; form.rewardType = t.value === 'secret' ? 'free_pack' : 'hearts'; }}
               >
                 {t.label}
                 <span class="type-hint">{t.hint}</span>
@@ -139,13 +138,14 @@
       </div>
 
       <div class="form-actions">
-        <button class="btn btn-gold" on:click={saveTask}>שמור משימה</button>
+        <button class="btn btn-gold" on:click={saveTask} disabled={saving}>
+          {saving ? 'שומר...' : 'שמור משימה'}
+        </button>
         <button class="btn btn-ghost" on:click={() => { showForm = false; editId = null; }}>ביטול</button>
       </div>
     </div>
   {/if}
 
-  <!-- ── Task list ───────────────────────────────────────────── -->
   <div class="task-table surface">
     {#if allTasks.length === 0}
       <p class="empty-msg">אין משימות עדיין. צור את הראשונה!</p>
@@ -182,36 +182,18 @@
   .back-link:hover { color: var(--gold); }
   .saved-msg { color: var(--success); font-size: var(--text-sm); margin-bottom: var(--sp-4); }
 
-  /* form */
-  .form-card {
-    padding: var(--sp-6);
-    border-radius: var(--r-xl);
-    margin-bottom: var(--sp-6);
-    animation: fadeUp 0.3s var(--ease-out);
-  }
+  .form-card { padding: var(--sp-6); border-radius: var(--r-xl); margin-bottom: var(--sp-6); animation: fadeUp 0.3s var(--ease-out); }
   .form-title { margin: 0 0 var(--sp-5); font-size: var(--text-xl); }
-  .form-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--sp-4);
-    margin-bottom: var(--sp-5);
-  }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4); margin-bottom: var(--sp-5); }
   @media(max-width:600px){ .form-grid { grid-template-columns:1fr; } }
 
   .type-picker { display: flex; flex-direction: column; gap: var(--sp-2); }
   .type-btn {
-    display: flex;
-    align-items: center;
-    gap: var(--sp-2);
-    padding: var(--sp-3);
-    border-radius: var(--r-md);
-    border: 1px solid var(--glass-border);
-    background: var(--glass);
-    color: var(--ink-dim);
-    cursor: pointer;
-    font: inherit;
-    transition: all 0.15s ease;
-    text-align: right;
+    display: flex; align-items: center; gap: var(--sp-2);
+    padding: var(--sp-3); border-radius: var(--r-md);
+    border: 1px solid var(--glass-border); background: var(--glass);
+    color: var(--ink-dim); cursor: pointer; font: inherit;
+    transition: all 0.15s ease; text-align: right;
   }
   .type-btn:hover  { border-color: var(--gold-muted); color: var(--ink); }
   .type-btn.active { border-color: var(--gold); background: var(--glass-gold); color: var(--ink); }
@@ -223,34 +205,19 @@
   .reward-note { margin: var(--sp-1) 0 0; font-size: var(--text-xs); color: var(--ink-dim); }
 
   .toggle-label { display: flex; align-items: center; gap: var(--sp-2); cursor: pointer; font-size: var(--text-sm); }
-
   .form-actions { display: flex; gap: var(--sp-3); }
 
-  /* table */
-  .task-table {
-    border-radius: var(--r-xl);
-    overflow: hidden;
-  }
+  .task-table { border-radius: var(--r-xl); overflow: hidden; }
   .empty-msg { padding: var(--sp-6); text-align: center; color: var(--ink-dim); margin: 0; }
   .task-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--sp-4);
-    padding: var(--sp-4) var(--sp-5);
-    border-bottom: 1px solid var(--glass-border);
-    flex-wrap: wrap;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: var(--sp-4); padding: var(--sp-4) var(--sp-5);
+    border-bottom: 1px solid var(--glass-border); flex-wrap: wrap;
   }
   .task-row:last-child { border-bottom: none; }
   .task-row.inactive { opacity: 0.45; }
   .task-row-info { display: flex; align-items: center; gap: var(--sp-3); flex: 1; min-width: 0; }
-  .task-type-pill {
-    flex-shrink: 0;
-    font-size: var(--text-xs);
-    font-weight: 700;
-    padding: 0.2em 0.6em;
-    border-radius: var(--r-pill);
-  }
+  .task-type-pill { flex-shrink: 0; font-size: var(--text-xs); font-weight: 700; padding: 0.2em 0.6em; border-radius: var(--r-pill); }
   .task-row-title { font-size: var(--text-sm); font-weight: 600; }
   .task-row-meta  { display: flex; align-items: center; gap: var(--sp-2); flex-shrink: 0; }
   .reward-pack-sm { font-size: 1.1rem; }
