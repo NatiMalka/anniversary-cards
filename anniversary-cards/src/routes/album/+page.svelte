@@ -103,6 +103,8 @@
                 description={card.description}
                 rarityTier={card.rarityTier}
                 isFlat={card.isFlat}
+                showFrame={card.showFrame ?? false}
+                frameColor={card.frameColor ?? '#f5c451'}
               />
             </div>
             <div class="slot-badge" style="background:{tierColors[card.rarityTier] || '#475569'}">
@@ -137,6 +139,8 @@
           description={modalCard.description}
           rarityTier={modalCard.rarityTier}
           isFlat={modalCard.isFlat}
+          showFrame={modalCard.showFrame ?? false}
+          frameColor={modalCard.frameColor ?? '#f5c451'}
           showcase={true}
         />
       </div>

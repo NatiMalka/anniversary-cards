@@ -13,7 +13,12 @@
     <a href="/admin/card-editor" class="admin-card surface">
       <span class="admin-icon">🎴</span>
       <h3>עורך קלפים</h3>
-      <p>יצירת קלפים חדשים ושמירה לאלבום</p>
+      <p>יצירת קלפים חדשים ושמירה לבריכה</p>
+    </a>
+    <a href="/admin/card-pool" class="admin-card surface">
+      <span class="admin-icon">🗂</span>
+      <h3>בריכת הקלפים</h3>
+      <p>צפייה, עריכה ומחיקה של קלפים שנוצרו</p>
     </a>
     <a href="/album" class="admin-card surface">
       <span class="admin-icon">📚</span>

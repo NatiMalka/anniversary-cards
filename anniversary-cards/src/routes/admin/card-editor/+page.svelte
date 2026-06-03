@@ -1,17 +1,53 @@
 <script>
   import { onMount } from 'svelte';
-  import { user } from '$lib/stores/user.js';
-  import { loadCollection, collection } from '$lib/stores/collection.js';
+  import { page } from '$app/stores';
+  import { savePool, getByNumber } from '$lib/stores/cardPool.js';
   import { supabase } from '$lib/supabase.js';
   import { EFFECTS, EFFECT_IDS, TIER_LABELS } from '$lib/effects.js';
   import CardFront from '$lib/components/CardFront.svelte';
 
+  let editMode = false;
+
   onMount(async () => {
-    if ($user.id) await loadCollection($user.id);
+    const cardParam = $page.url.searchParams.get('card');
+    if (cardParam) {
+      const existing = await getByNumber(Number(cardParam));
+      if (existing) {
+        editMode = true;
+        form = {
+          cardNumber:  existing.card_number,
+          effect:      existing.effect,
+          title:       existing.title,
+          description: existing.description,
+          date:        existing.date,
+          rarityTier:  existing.rarity_tier,
+          isFlat:      existing.is_flat,
+          photo:       existing.photo_url ?? '/pack-image.png',
+          showFrame:   existing.show_frame ?? false,
+          frameColor:  existing.frame_color ?? '#f5c451',
+        };
+        previewKey++;
+      }
+    }
   });
 
   const TIERS = ['common', 'rare', 'epic', 'legendary'];
   const TIER_COLORS = { common: 'var(--ink-dim)', rare: 'var(--silver)', epic: 'var(--silver)', legendary: 'var(--gold)' };
+
+  const FRAME_COLORS = [
+    { value: '#f5c451', label: 'זהב' },
+    { value: '#c8c8d4', label: 'כסף' },
+    { value: '#e8e8f0', label: 'פלטינה' },
+    { value: '#d4956a', label: 'ורד-זהב' },
+    { value: '#b87333', label: 'נחושת' },
+    { value: '#8b6914', label: 'ברונזה' },
+    { value: '#111111', label: 'שחור' },
+    { value: '#2e2e2e', label: 'אנתרציט' },
+    { value: '#9b1b30', label: 'יין' },
+    { value: '#1e3a5f', label: 'כחול-לילה' },
+    { value: '#0d4f3c', label: 'ירוק-יער' },
+    { value: '#4a2060', label: 'סגול-כהה' },
+  ];
 
   let form = {
     cardNumber:  '',
@@ -22,6 +58,8 @@
     rarityTier:  'rare',
     isFlat:      false,
     photo:       '/pack-image.png',
+    showFrame:   false,
+    frameColor:  '#f5c451',
   };
 
   let saved       = '';
@@ -76,15 +114,13 @@
       }
     }
 
-    const ok = await collection.addCard(
-      { ...form, photo: photoUrl, cardNumber: Number(form.cardNumber) },
-      $user.id
-    );
+    const { ok } = await savePool({ ...form, photo: photoUrl, cardNumber: Number(form.cardNumber) });
 
     saving = false;
     if (ok) {
-      saved = '✅ קלף נשמר לאוסף!';
+      saved = '✅ קלף נשמר לבריכה!';
       selectedFile = null;
+      editMode = true;
     } else {
       saved = '❌ שגיאה בשמירה';
     }
@@ -92,8 +128,9 @@
   }
 
   function resetForm() {
-    form = { cardNumber: '', effect: 'holo', title: 'שם הקלף', description: 'תיאור קצר...', date: '2015', rarityTier: 'rare', isFlat: false, photo: '/pack-image.png' };
+    form = { cardNumber: '', effect: 'holo', title: 'שם הקלף', description: 'תיאור קצר...', date: '2015', rarityTier: 'rare', isFlat: false, photo: '/pack-image.png', showFrame: false, frameColor: '#f5c451' };
     selectedFile = null;
+    editMode = false;
     previewKey++;
   }
 
@@ -106,8 +143,8 @@
 
   <div class="page-header">
     <div class="header-start">
-      <a href="/admin" class="back-link">← ניהול</a>
-      <h1>עורך קלפים</h1>
+      <a href="/admin/card-pool" class="back-link">← בריכת הקלפים</a>
+      <h1>{editMode ? 'עריכת קלף' : 'קלף חדש'}</h1>
     </div>
     <button class="btn btn-ghost btn-sm" on:click={resetForm}>איפוס</button>
   </div>
@@ -214,6 +251,29 @@
           <input type="checkbox" bind:checked={form.isFlat} on:change={bump} style="accent-color:var(--gold)" />
           <span class="toggle-text">קלף שטוח (isFlat) — ללא אפקטי 3D</span>
         </label>
+
+        <div class="input-wrap mt-4">
+          <label class="toggle-row">
+            <input type="checkbox" bind:checked={form.showFrame} on:change={bump} style="accent-color:var(--gold)" />
+            <span class="toggle-text">מסגרת TCG — מסגרת סביב התמונה</span>
+          </label>
+
+          {#if form.showFrame}
+            <div class="frame-swatches">
+              {#each FRAME_COLORS as fc}
+                <button
+                  type="button"
+                  class="swatch"
+                  class:swatch-active={form.frameColor === fc.value}
+                  style="background:{fc.value};"
+                  title={fc.label}
+                  aria-label="מסגרת {fc.label}"
+                  on:click={() => { form.frameColor = fc.value; bump(); }}
+                ></button>
+              {/each}
+            </div>
+          {/if}
+        </div>
       </section>
 
       <div class="save-spacer"></div>
@@ -231,6 +291,8 @@
             description={form.description}
             rarityTier={form.rarityTier}
             isFlat={form.isFlat}
+            showFrame={form.showFrame}
+            frameColor={form.frameColor}
             back="/pack-images.png"
           />
         {/key}
@@ -252,7 +314,7 @@
     <span class="save-hint">{canSave ? 'מוכן לשמירה' : 'יש למלא מספר קלף וכותרת'}</span>
   {/if}
   <button class="btn btn-gold save-btn" disabled={!canSave || saving} on:click={saveCard}>
-    {saving ? 'שומר...' : '💾 שמור לאוסף'}
+    {saving ? 'שומר...' : (editMode ? '💾 עדכן בריכה' : '💾 שמור לבריכה')}
   </button>
 </div>
 
@@ -302,6 +364,35 @@
 
   .toggle-row { display: flex; align-items: center; gap: var(--sp-2); cursor: pointer; }
   .toggle-text { font-size: var(--text-sm); color: var(--ink-dim); }
+  .mt-4 { margin-top: var(--sp-4); }
+
+  /* Frame colour swatches */
+  .frame-swatches {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: var(--sp-3);
+    padding: var(--sp-3);
+    border-radius: var(--r-lg);
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--glass-border);
+  }
+  .swatch {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    outline: none;
+    flex-shrink: 0;
+  }
+  .swatch:hover { transform: scale(1.18); box-shadow: 0 2px 8px rgba(0,0,0,0.5); }
+  .swatch-active {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 2px rgba(245,196,81,0.4), 0 2px 8px rgba(0,0,0,0.5);
+    transform: scale(1.12);
+  }
 
   .save-spacer { height: calc(var(--nav-bot-h) + 64px + var(--sp-4)); }
 

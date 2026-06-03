@@ -24,6 +24,8 @@ export async function loadCollection(userId) {
         rarityTier:  c.rarity_tier,
         year:        c.year,
         isFlat:      c.is_flat,
+        showFrame:   c.show_frame ?? false,
+        frameColor:  c.frame_color ?? '#f5c451',
         count:       item.count,
         cardId:      c.id,
         collectionId: item.id

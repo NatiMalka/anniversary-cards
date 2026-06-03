@@ -7,7 +7,7 @@
   import { EFFECTS, EFFECT_IDS } from '$lib/effects.js';
 
   /**
-   * pack: { id, label, cost, desc?, color, tiers }
+   * pack: { id, label, cost, color, tiers }
    */
   export let pack;
   export let sound = true;
@@ -72,9 +72,6 @@
       <!-- pack info -->
       <div class="pack-info">
         <span class="pack-label" style="color:{pack.color}">{pack.label}</span>
-        {#if pack.desc}
-          <span class="pack-desc">{pack.desc}</span>
-        {/if}
 
         <span class="cost-badge">
           <svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11" aria-hidden="true">
@@ -230,12 +227,6 @@
     font-size: var(--text-2xl);
     font-weight: 700;
     line-height: 1.2;
-  }
-
-  .pack-desc {
-    font-size: var(--text-sm);
-    color: var(--ink-dim);
-    line-height: 1.4;
   }
 
   .cost-badge {
