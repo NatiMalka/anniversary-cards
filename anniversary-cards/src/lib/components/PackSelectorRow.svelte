@@ -103,8 +103,6 @@
             </div>
           </div>
         </div>
-        <span class="label" style="color:{pk.color}">{pk.label}</span>
-        <span class="cost">{pk.cost} ♥</span>
       </button>
     {/each}
   </div>
@@ -146,7 +144,6 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: var(--sp-1);
     padding: 0;
     border: none;
     background: none;
@@ -247,19 +244,6 @@
     overflow: hidden;
   }
 
-  .label {
-    font-size: var(--text-xs);
-    font-weight: 700;
-    letter-spacing: 0.02em;
-  }
-
-  .cost {
-    font-size: 0.65rem;
-    color: var(--ink-dim);
-    font-variant-numeric: tabular-nums;
-    margin-top: -2px;
-  }
-
   @media (max-width: 520px) {
     .pack-selector {
       gap: var(--sp-1);
@@ -269,10 +253,6 @@
       max-width: 380px;
       gap: var(--sp-1);
       padding-top: 0;
-    }
-
-    .tile {
-      gap: 2px;
     }
 
     .tile:hover,
@@ -288,25 +268,11 @@
       border-radius: 6px;
       box-shadow: 0 10px 20px -18px var(--glow);
     }
-
-    .label {
-      font-size: 0.68rem;
-      line-height: 1.1;
-    }
-
-    .cost {
-      font-size: 0.6rem;
-      line-height: 1;
-    }
   }
 
   @media (min-width: 640px) {
     .grid {
       padding-top: var(--sp-5);
-    }
-
-    .label {
-      font-size: var(--text-sm);
     }
   }
 

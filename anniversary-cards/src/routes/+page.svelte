@@ -11,7 +11,7 @@
   import HomeTodaySection from '$lib/components/home/HomeTodaySection.svelte';
   import HomeAlbumProgress from '$lib/components/home/HomeAlbumProgress.svelte';
   import HomeShortcuts from '$lib/components/home/HomeShortcuts.svelte';
-  import { RefreshCw, ChevronLeft } from '@lucide/svelte';
+  import { RefreshCw } from '@lucide/svelte';
 
   const { years, days } = anniversaryStats();
 
@@ -33,18 +33,7 @@
   <HomeHero {days} {years} />
 
   <div class="dashboard">
-    <section class="packs-panel" aria-labelledby="packs-heading">
-      <div class="packs-head">
-        <div>
-          <h2 class="section-eyebrow" id="packs-heading">חבילות</h2>
-          <p class="packs-lead">בחרי חבילה לפתיחה</p>
-        </div>
-        <a href="/packs" class="packs-link">
-          כל החבילות
-          <ChevronLeft size={14} strokeWidth={2.5} aria-hidden="true" />
-        </a>
-      </div>
-
+    <section class="packs-panel" aria-label="חבילות">
       <PackSelectorRow hint={undefined} on:select={(e) => (focusedPack = e.detail)} />
 
       {#if $isAdmin}
@@ -108,35 +97,6 @@
     }
   }
 
-  .packs-head {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: var(--sp-4);
-  }
-
-  .packs-lead {
-    margin: 0;
-    font-size: var(--text-xs);
-    color: var(--ink-dim);
-  }
-
-  .packs-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 2px;
-    font-size: var(--text-xs);
-    font-weight: 600;
-    color: var(--gold-dim);
-    text-decoration: none;
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-
-  .packs-link:hover {
-    color: var(--gold);
-  }
-
   .admin-tools {
     display: flex;
     justify-content: center;
@@ -164,11 +124,6 @@
     .packs-panel {
       gap: var(--sp-4);
       padding: var(--sp-5);
-    }
-
-    .packs-lead {
-      margin-top: var(--sp-1);
-      font-size: var(--text-sm);
     }
   }
 
