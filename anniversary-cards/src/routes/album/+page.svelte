@@ -107,9 +107,6 @@
                 frameColor={card.frameColor ?? '#f5c451'}
               />
             </div>
-            <div class="slot-badge" style="background:{tierColors[card.rarityTier] || '#475569'}">
-              {TIER_LABELS[card.rarityTier] || card.rarityTier}
-            </div>
             {#if card.count > 1}
               <div class="slot-count">×{card.count}</div>
             {/if}
@@ -194,7 +191,6 @@
   .slot--filled :global(.card) { pointer-events: none !important; }
   .slot-card :global(.card__shine), .slot-card :global(.card__glare) { display: none !important; }
   .slot-card :global(.card:not(.interactive):hover) { --card-opacity: 0 !important; --card-scale: 1 !important; --translate-y: 0px !important; }
-  .slot-badge { position: absolute; top: 6px; left: 6px; z-index: 5; font-size: 0.55rem; font-weight: 700; padding: 0.2em 0.55em; border-radius: 999px; color: #fff; pointer-events: none; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
   .slot-count { position: absolute; bottom: 6px; left: 6px; z-index: 5; font-size: 0.6rem; font-weight: 700; padding: 0.15em 0.45em; border-radius: 999px; background: rgba(0,0,0,0.55); color: var(--gold,#f5c451); pointer-events: none; }
 
   .modal-backdrop { position: fixed; inset: 0; z-index: 9000; background: rgba(10,4,22,0.82); backdrop-filter: blur(6px); display: grid; place-items: center; padding: 1rem; }
