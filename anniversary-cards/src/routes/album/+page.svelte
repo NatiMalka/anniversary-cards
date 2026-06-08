@@ -7,7 +7,7 @@
 
   const TOTAL    = 100;
   const ALL_SLOTS = Array.from({ length: TOTAL }, (_, i) => i + 1);
-  const tiers    = ['all', 'legendary', 'epic', 'rare', 'common'];
+  const tiers    = ['all', 'legendary', 'rare', 'common'];
   const tierLabels = { all: 'הכל', ...TIER_LABELS };
 
   let activeYear = 'all';
@@ -200,7 +200,7 @@
   .modal-backdrop { position: fixed; inset: 0; z-index: 9000; background: rgba(10,4,22,0.82); backdrop-filter: blur(6px); display: grid; place-items: center; padding: 1rem; }
   .modal-inner { position: relative; display: flex; flex-direction: column; align-items: center; gap: 1.25rem; max-width: 480px; width: 100%; animation: popIn 0.35s cubic-bezier(0.2,0.9,0.3,1.2); }
   .modal-close { position: absolute; top: -0.5rem; left: -0.5rem; z-index: 10; width: 2rem; height: 2rem; border-radius: 50%; border: 1px solid rgba(255,255,255,0.2); background: rgba(30,14,50,0.9); color: var(--ink-dim); font-size: 0.85rem; cursor: pointer; display: grid; place-items: center; }
-  .modal-card { width: min(320px, 80vw); }
+  .modal-card { width: min(360px, 88vw); }
   .modal-meta { text-align: center; }
   .modal-title { margin: 0 0 0.3rem; font-family: 'Frank Ruhl Libre', serif; font-size: 1.3rem; font-weight: 700; }
   .modal-desc  { margin: 0 0 0.75rem; color: var(--ink-dim); font-size: 0.95rem; line-height: 1.5; }

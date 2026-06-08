@@ -44,14 +44,32 @@
 }
 
 /*
-  CRISP WHEN ZOOMED (popover):
-  the engine keeps `will-change: transform` on the translater/rotator, so the
-  card is cached as a texture and the popover's scale(1.75) upscales that
-  bitmap — blurring the photo and text. While a card is `.active` we drop
-  will-change so it re-rasterizes at the enlarged size once the zoom settles.
+  CRISP TEXT (esp. mobile hi-DPI + popover zoom):
+  the engine pins `will-change: transform` on the translater/rotator. On hi-DPI
+  phones the browser then caches the card as a memory-capped (≈1x) texture, so
+  the DOM template text is soft even at rest; and the popover's scale(1.75)
+  upscales that same bitmap. Dropping will-change lets the card paint at native
+  device resolution at every size. (will-change is only a perf hint — removing
+  it costs nothing for our 2-user app and does not affect the holo blend.)
 */
-.card.active .card__translater,
-.card.active .card__rotator {
+.card__translater,
+.card__rotator,
+.card__front,
+.card__front * {
 	will-change: auto;
+}
+
+/*
+  …and the front FACE itself is promoted onto its own layer via
+  `transform: translate3d(0,0,0.01px)`; inside the preserve-3d rotator that layer
+  is rasterised to a texture and upscaled by the parent's scale(1.75), so the
+  DOM template text (title / date / description) stays soft however much we drop
+  will-change. While zoomed we don't need the holo blend-isolation that the
+  z-nudge provides, so drop it then — the text repaints crisply at the final
+  size. (We never flip the front to its back, so the nudge is otherwise unused.)
+*/
+.card.active .card__front {
+	-webkit-transform: none;
+	transform: none;
 }
 

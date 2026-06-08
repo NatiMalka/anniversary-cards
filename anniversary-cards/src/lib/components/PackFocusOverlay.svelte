@@ -1,10 +1,13 @@
 <script>
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
+  import { get }                from 'svelte/store';
   import { user }              from '$lib/stores/user.js';
   import { wallet, freePacks } from '$lib/stores/wallet.js';
+  import { collection }        from '$lib/stores/collection.js';
+  import { pool, loadPool }    from '$lib/stores/cardPool.js';
   import ThreePack             from './ThreePack.svelte';
   import PackOpener            from './PackOpener.svelte';
-  import { EFFECTS, EFFECT_IDS } from '$lib/effects.js';
+  import { drawPack }          from '$lib/packDraw.js';
 
   /**
    * pack: { id, label, cost, color, tiers }
@@ -25,13 +28,10 @@
   $: hearts    = wallet.balance($user.id);
   $: canAfford = free > 0 || hearts >= pack.cost;
 
+  onMount(() => { loadPool(); });
+
   function buildCards() {
-    const tiers = pack.tiers || ['common', 'rare'];
-    return Array.from({ length: 5 }, (_, i) => {
-      const tier   = tiers[i % 2 === 0 ? 0 : 1];
-      const effect = EFFECT_IDS.find(/** @param {any} id */ id => EFFECTS[id].tier === tier) || 'holo';
-      return { effect, photo: '/pack-image.png', title: '', date: '', description: '', rarityTier: tier, cardNumber: null };
-    });
+    return drawPack(get(pool), pack.odds, 5);
   }
 
   function openPack() {
@@ -43,6 +43,10 @@
     }
     openCards = buildCards();
     phase = 'opening';
+  }
+
+  function onDone() {
+    collection.grantMany(openCards, $user.id);
   }
 
   function close()      { dispatch('close'); }
@@ -110,7 +114,7 @@
     <!-- ── Pack opener (full-width inside overlay) ─────────────── -->
     <div class="panel opening-panel">
       <button class="btn btn-ghost btn-sm back-floating" on:click={onReset}>← חזרה</button>
-      <PackOpener cards={openCards} {sound} packImage="/pack-images.png" {packImagePosition} on:done={() => {}} on:reset={onReset} />
+      <PackOpener cards={openCards} {sound} packImage="/pack-images.png" {packImagePosition} on:done={onDone} on:reset={onReset} />
     </div>
   {/if}
 

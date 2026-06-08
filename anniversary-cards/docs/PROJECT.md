@@ -62,8 +62,9 @@ Full design doc: `C:\Users\netam\.claude\plans\glimmering-roaming-parasol.md`
 
 ### Phase C — Economy & packs
 - Wallet UI; tasks CRUD (admin); self-mark + `claim_task` RPC (period_key dedupe).
+- ✅ **Weighted pull (client-side):** 3 card types (common/rare/legendary) set explicitly in the editor (decoupled from effect); per-pack `odds` in `src/lib/packs.js`; `src/lib/packDraw.js` rolls a type per slot and draws a real card from the pool (weighted by `cards.weight`), with a sparse-pool fallback; opened cards granted to the album via `collection.grantMany` → `add_to_collection`. _(2-user honor-system POC — see below for the hardened version.)_
 - Pack config (admin): price, cards-per-pack, rarity odds, premium guaranteed-rare.
-- `open_pack` RPC (SECURITY DEFINER, atomic): lock wallet → weighted roll by tier + card `weight` → guarantee → deduct coins → grant to opener's collection → audit. Called from a SvelteKit action; feed results into `PackOpener`.
+- `open_pack` RPC (SECURITY DEFINER, atomic): lock wallet → weighted roll by tier + card `weight` → guarantee → deduct coins → grant to opener's collection → audit. Called from a SvelteKit action; feed results into `PackOpener`. _(Hardens the current client-side draw.)_
 
 ### Phase D — Album / binder
 - `user_collection` grid with a lightweight non-interactive `CardThumb`.

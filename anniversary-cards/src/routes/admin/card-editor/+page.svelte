@@ -31,8 +31,8 @@
     }
   });
 
-  const TIERS = ['common', 'rare', 'epic', 'legendary'];
-  const TIER_COLORS = { common: 'var(--ink-dim)', rare: 'var(--silver)', epic: 'var(--silver)', legendary: 'var(--gold)' };
+  const TIERS = ['common', 'rare', 'legendary'];
+  const TIER_COLORS = { common: 'var(--ink-dim)', rare: 'var(--silver)', legendary: 'var(--gold)' };
 
   const FRAME_COLORS = [
     { value: '#f5c451', label: 'זהב' },
@@ -78,7 +78,6 @@
 
   function pickEffect(id) {
     form.effect    = id;
-    form.rarityTier = EFFECTS[id]?.tier ?? form.rarityTier;
     previewKey++;
   }
 
@@ -235,7 +234,7 @@
       <section class="card-section surface">
         <p class="sec-title">נדירות ופורמט</p>
         <div class="input-wrap">
-          <label class="input-label">נדירות (עקיפה)</label>
+          <label class="input-label">סוג הקלף</label>
           <div class="chips">
             {#each TIERS as t}
               <button
@@ -308,35 +307,86 @@
 </div>
 
 <div class="save-bar">
-  {#if saved}
-    <span class="saved-msg">{saved}</span>
-  {:else}
-    <span class="save-hint">{canSave ? 'מוכן לשמירה' : 'יש למלא מספר קלף וכותרת'}</span>
-  {/if}
-  <button class="btn btn-gold save-btn" disabled={!canSave || saving} on:click={saveCard}>
-    {saving ? 'שומר...' : (editMode ? '💾 עדכן בריכה' : '💾 שמור לבריכה')}
-  </button>
+  <div class="save-bar-inner">
+    {#if saved}
+      <span class="saved-msg">{saved}</span>
+    {:else}
+      <span class="save-hint">{canSave ? 'מוכן לשמירה' : 'יש למלא מספר קלף וכותרת'}</span>
+    {/if}
+    <button class="btn btn-gold save-btn" disabled={!canSave || saving} on:click={saveCard}>
+      {saving ? 'שומר...' : (editMode ? '💾 עדכן בריכה' : '💾 שמור לבריכה')}
+    </button>
+  </div>
 </div>
 
 <style>
-  .editor-page { max-width: 1000px; padding-bottom: 0; }
+  .editor-page { max-width: 1040px; padding-bottom: 0; }
 
-  .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--sp-6); }
+  .page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--sp-4);
+    margin-bottom: var(--sp-6);
+    padding-bottom: var(--sp-4);
+    border-bottom: 1px solid var(--glass-border);
+  }
   .header-start { display: flex; flex-direction: column; gap: 2px; }
   .header-start h1 { margin: 0; font-size: var(--text-2xl); }
   .back-link { font-size: var(--text-xs); color: var(--gold-dim); text-decoration: none; }
   .back-link:hover { color: var(--gold); }
 
-  .editor-grid { display: grid; grid-template-columns: 1fr 300px; gap: var(--sp-6); align-items: start; }
+  .editor-grid { display: grid; grid-template-columns: 1fr 340px; gap: var(--sp-6); align-items: start; }
   @media (max-width: 820px) { .editor-grid { grid-template-columns: 1fr; } .preview-col { order: -1; } }
 
-  .form-col { display: flex; flex-direction: column; gap: var(--sp-4); }
-  .card-section { padding: var(--sp-5); border-radius: var(--r-xl); }
+  .form-col { display: flex; flex-direction: column; gap: var(--sp-4); counter-reset: sec; }
 
-  .sec-title { font-size: var(--text-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: var(--ink-dim); margin: 0 0 var(--sp-4); }
+  /* Modern, numbered section cards */
+  .card-section {
+    position: relative;
+    padding: var(--sp-5);
+    border-radius: var(--r-xl);
+    background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.018));
+    border: 1px solid var(--glass-border);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+    transition: border-color 0.2s ease;
+  }
+  .card-section:focus-within { border-color: var(--gold-muted); }
+  .form-col .card-section { counter-increment: sec; }
+
+  .sec-title {
+    display: flex;
+    align-items: center;
+    gap: 0.6em;
+    font-size: var(--text-sm);
+    font-weight: 700;
+    color: var(--ink);
+    margin: 0 0 var(--sp-4);
+  }
+  .form-col .sec-title::before {
+    content: counter(sec);
+    display: grid;
+    place-items: center;
+    width: 1.65em;
+    height: 1.65em;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--glass-gold);
+    border: 1px solid var(--glass-gold-border);
+    color: var(--gold);
+    font-size: 0.82em;
+    font-weight: 800;
+  }
   .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
   @media (max-width: 500px) { .row-2 { grid-template-columns: 1fr; } }
   .mt-3 { margin-top: var(--sp-3); }
+
+  /* Gold focus ring on inputs */
+  .input:focus {
+    outline: none;
+    border-color: var(--gold-muted);
+    box-shadow: 0 0 0 3px rgba(245, 196, 81, 0.12);
+  }
 
   .drop-zone { position: relative; width: 100%; min-height: 120px; border: 2px dashed var(--glass-border); border-radius: var(--r-lg); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: border-color 0.18s ease, background 0.18s ease; overflow: hidden; }
   .drop-zone:hover, .drop-zone.drag-over { border-color: var(--gold-muted); background: var(--glass-gold); }
@@ -396,17 +446,63 @@
 
   .save-spacer { height: calc(var(--nav-bot-h) + 64px + var(--sp-4)); }
 
-  .preview-col { position: sticky; top: calc(var(--nav-top-h) + var(--sp-4)); display: flex; flex-direction: column; align-items: center; gap: var(--sp-3); }
-  @media (max-width: 820px) { .preview-col { position: static; flex-direction: row; align-items: flex-start; gap: var(--sp-5); } .preview-col .sec-title { display: none; } }
-  .preview-frame { position: relative; width: min(260px, 82vw); aspect-ratio: 0.718; border-radius: 12px; box-shadow: 0 20px 55px rgba(0,0,0,0.7), 0 0 0 1px rgba(245,196,81,0.18); animation: fadeUp 0.22s var(--ease-out) both; }
-  @media (max-width: 820px) { .preview-frame { width: min(140px, 38vw); } }
+  /* ── Preview stage ───────────────────────────────────────────── */
+  .preview-col {
+    position: sticky;
+    top: calc(var(--nav-top-h) + var(--sp-4));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--sp-4);
+    padding: var(--sp-6) var(--sp-5);
+    border-radius: var(--r-xl);
+    background:
+      radial-gradient(135% 70% at 50% -8%, rgba(245,196,81,0.13), transparent 56%),
+      linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.018));
+    border: 1px solid var(--glass-border);
+  }
+  .preview-col .sec-title {
+    align-self: center;
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    font-size: var(--text-xs);
+    color: var(--ink-dim);
+  }
+  @media (max-width: 820px) {
+    .preview-col { position: static; flex-direction: row; align-items: center; gap: var(--sp-5); padding: var(--sp-4); }
+    .preview-col .sec-title { display: none; }
+  }
+  .preview-frame { position: relative; width: min(280px, 80vw); aspect-ratio: 0.718; border-radius: 14px; box-shadow: 0 24px 60px rgba(0,0,0,0.75), 0 0 0 1px rgba(245,196,81,0.2); animation: fadeUp 0.22s var(--ease-out) both; }
+  @media (max-width: 820px) { .preview-frame { width: min(150px, 40vw); } }
   :global(.preview-frame .card.active) { z-index: var(--z-modal); }
   .preview-badges { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
   @media (max-width: 820px) { .preview-badges { flex-direction: column; align-items: flex-start; } }
-  .badge { font-size: var(--text-xs); font-weight: 600; padding: 0.2em 0.6em; border-radius: var(--r-pill); border: 1px solid var(--glass-border); background: var(--glass); color: var(--ink-dim); }
+  .badge { font-size: var(--text-xs); font-weight: 600; padding: 0.25em 0.7em; border-radius: var(--r-pill); border: 1px solid var(--glass-border); background: var(--glass); color: var(--ink-dim); }
 
-  .save-bar { position: fixed; bottom: var(--nav-bot-h); left: 0; right: 0; z-index: var(--z-float); display: flex; align-items: center; justify-content: space-between; padding: var(--sp-3) var(--sp-5); background: rgba(10,8,25,0.88); border-top: 1px solid rgba(245,196,81,0.15); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); gap: var(--sp-4); }
+  /* ── Save bar ────────────────────────────────────────────────── */
+  .save-bar {
+    position: fixed;
+    bottom: var(--nav-bot-h);
+    left: 0; right: 0;
+    z-index: var(--z-float);
+    padding: var(--sp-3) var(--sp-4);
+    background: rgba(10,8,25,0.9);
+    border-top: 1px solid rgba(245,196,81,0.15);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+  /* desktop hides the bottom tab bar, so the save bar sits flush */
+  @media (min-width: 768px) { .save-bar { bottom: 0; } }
+  .save-bar-inner {
+    max-width: 1040px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-4);
+  }
   .save-hint { font-size: var(--text-xs); color: var(--ink-dim); }
   .saved-msg { font-size: var(--text-sm); font-weight: 600; color: var(--success); }
-  .save-btn { min-width: 140px; }
+  .save-btn { min-width: 150px; }
 </style>

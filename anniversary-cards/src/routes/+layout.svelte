@@ -34,6 +34,17 @@
     <span class="brand-love">אהבה</span>
   </a>
 
+  <!-- Desktop primary nav (mobile uses the bottom tab bar) -->
+  <nav class="top-nav" aria-label="ניווט ראשי">
+    {#each navItems as item}
+      <a
+        class="top-nav-link"
+        class:active={path === item.href || (item.href !== '/' && path.startsWith(item.href))}
+        href={item.href}
+      >{item.label}</a>
+    {/each}
+  </nav>
+
   <div class="top-right">
     <div class="wallet-display">
       {#if freeLeft > 0}
@@ -131,6 +142,39 @@
   .brand-decade { color: var(--gold); }
   .brand-of     { color: var(--ink-dim); font-weight: 400; font-size: var(--text-sm); }
   .brand-love   { color: var(--silver); }
+
+  /* ── Desktop primary nav ───────────────────────────────────── */
+  .top-nav {
+    display: none; /* shown on desktop only; mobile uses the bottom tab bar */
+  }
+
+  @media (min-width: 768px) {
+    .top-nav {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-1);
+    }
+  }
+
+  .top-nav-link {
+    position: relative;
+    padding: 0.45em 0.95em;
+    border-radius: var(--r-pill);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--ink-dim);
+    text-decoration: none;
+    white-space: nowrap;
+    transition: color 0.18s ease, background 0.18s ease;
+  }
+  .top-nav-link:hover {
+    color: var(--ink);
+    background: var(--glass);
+  }
+  .top-nav-link.active {
+    color: var(--gold);
+    background: rgba(245, 196, 81, 0.12);
+  }
 
   .top-right {
     display: flex;

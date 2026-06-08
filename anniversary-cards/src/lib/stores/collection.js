@@ -66,6 +66,20 @@ export const collection = {
     return !rpcError;
   },
 
+  /** Grant several already-pooled cards to a user's album (increments counts), then refresh once. */
+  async grantMany(cards, userId) {
+    if (!userId) return;
+    for (const c of cards) {
+      if (!c?.cardId) continue;
+      await supabase.rpc('add_to_collection', {
+        p_user_id:     userId,
+        p_card_id:     c.cardId,
+        p_card_number: c.cardNumber
+      });
+    }
+    await loadCollection(userId);
+  },
+
   async removeCard(cardNumber, userId) {
     const entry = get(collectionStore)[String(cardNumber)];
     if (!entry) return;

@@ -53,8 +53,9 @@
           <span class="count-badge">{$pool.length} / 100</span>
         {/if}
       </h1>
+      <p class="header-sub">כל הקלפים שנוצרו — אלו שיופיעו בחבילות</p>
     </div>
-    <a href="/admin/card-editor" class="btn btn-gold btn-sm">+ קלף חדש</a>
+    <a href="/admin/card-editor" class="btn btn-gold btn-sm new-card-btn">+ קלף חדש</a>
   </div>
 
   {#if loading}
@@ -118,10 +119,12 @@
 
   .page-header {
     display: flex;
-    align-items: flex-end;
+    align-items: flex-start;
     justify-content: space-between;
     gap: var(--sp-4);
     margin-bottom: var(--sp-6);
+    padding-bottom: var(--sp-4);
+    border-bottom: 1px solid var(--glass-border);
     flex-wrap: wrap;
   }
 
@@ -130,6 +133,14 @@
     flex-direction: column;
     gap: 2px;
   }
+
+  .header-sub {
+    margin: 4px 0 0;
+    font-size: var(--text-sm);
+    color: var(--ink-dim);
+  }
+
+  .new-card-btn { flex-shrink: 0; }
 
   .header-start h1 {
     margin: 0;

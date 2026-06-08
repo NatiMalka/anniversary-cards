@@ -4,6 +4,60 @@ All notable progress on the Anniversary Cards app. Newest first.
 
 ---
 
+## 2026-06-08 — Desktop navigation + card-pool page polish
+
+### Desktop top-nav (web only)
+- **Added** a horizontal primary nav (בית / חבילות / אלבום / משימות / ניהול) into the top bar, shown only at `≥768px` (`src/routes/+layout.svelte`). On desktop the bottom tab bar is hidden, so there was previously no way to navigate except the brand logo. Mobile is unchanged (bottom tab bar). Active route is gold-highlighted; same `navItems`/active logic as the bottom bar.
+
+### Card editor (`/admin/card-editor`) — modernized layout
+- **Restyled** the form sections as numbered step cards (auto CSS counter) with gradient surfaces, inset highlight, and a gold focus-within border; section titles now use a gold step badge.
+- **Added** a gold focus ring on inputs/textarea.
+- **Turned** the live preview into a premium "stage" panel — gold radial glow on a glass surface, sticky on desktop — with a larger card and centered badges.
+- **Added** a header divider for consistency with the pool page.
+- **Fixed** the save bar floating above an empty strip on desktop: `bottom: 0` at `≥768px` (the bottom tab bar is hidden there), and centered its content in a `1040px` inner container.
+
+### Card-pool page (`/admin/card-pool`)
+- **Added** a subtitle ("כל הקלפים שנוצרו — אלו שיופיעו בחבילות") and a header divider so the page reads as intentional rather than empty when the pool has only a few cards.
+- **Changed** header alignment to `flex-start` and pinned the "+ קלף חדש" button so it stays put as the header grows.
+
+## 2026-06-08 — Blurry card text on close-up + fancier rarity badge
+
+### Blurry template text (mobile hi-DPI + zoom) and mobile text fit
+- **Fixed** the title/date/description looking soft on cards — most visible on mobile and when zoomed. Root cause: the engine pins `will-change: transform` on `.card__translater/.card__rotator` (`static/css/cards/base.css`), so hi-DPI phones cache the card as a memory-capped (~1x) texture (soft even at rest), and the popover's `scale(1.75)` upscales that same bitmap.
+- **Updated** `static/css/cards/_fullart.css` (loaded last): drop `will-change` on the translater/rotator/front globally so the card paints at native device resolution at every size; additionally set `transform: none` on the front face while `.active` (zoomed) so the DOM text repaints crisply at the enlarged size. (The front's `translate3d` z-nudge is kept at rest to preserve the holo `mix-blend-mode` isolation; we never flip front→back.)
+- **Fixed** mobile text fit: the template font sizes use container-query `cqw` units but their absolute `rem` floors in each `clamp()` were too high, so on a small card the floor over-sized the text relative to the card. Lowered the `clamp()` minimums for title / date / description / rarity badge so the proportions match the web at any card size (`src/lib/components/CardFront.svelte`).
+- **Bumped** the album close-up card from `min(320px,80vw)` → `min(360px,88vw)` for a larger, more readable view (`src/routes/album/+page.svelte`).
+
+### Rarity badge restyled (`src/lib/components/CardFront.svelte`)
+- **Replaced** the flat pill (and its retina-blurring `backdrop-filter`) with a metallic, gem-marked badge: faceted `◆` mark, inner highlight + shadow, per-tier identity — graphite **common**, brushed-silver **rare** (cool glow + travelling sheen), molten-gold **legendary** (warm glowing pulse + shimmer), platinum **epic** (legacy). Honors `prefers-reduced-motion`.
+
+## 2026-06-08 — Real weighted card pull from the pool (Phase C draw)
+
+### Card types simplified to 3, decoupled from the effect
+- **Changed** the card editor (`src/routes/admin/card-editor/+page.svelte`) rarity selector to **3 card types** — common / rare / legendary (dropped `epic`). Relabelled the field `נדירות (עקיפה)` → `סוג הקלף`.
+- **Decoupled** card type from the visual effect: picking an effect in `pickEffect()` no longer overwrites `rarityTier`. The effect tag is now purely cosmetic; `cards.rarity_tier` is set explicitly by the admin. (`effects.js` tier mapping is untouched — it still groups effects in the editor's effect gallery.)
+- Legacy `epic` cards remain reachable in the draw via the "any pool card" fallback; re-tag them in the editor.
+
+### Per-pack rarity odds (`src/lib/packs.js`)
+- **Replaced** each pack's `tiers: [a,b]` with an `odds` map across the 3 types (sums to 1):
+  - **Common** (`regular`): common 80% · rare 19% · legendary 1%
+  - **Rare** (`rare`): rare 70% · common 25% · legendary 5%
+  - **Legendary** (`legendary`): legendary 75% · rare 25%
+- Updated pack `desc` strings to match. Odds are plain constants, easy to rebalance.
+
+### Weighted draw from the real pool (`src/lib/packDraw.js` — new)
+- **Added** pure helpers `rollType(odds)` (cumulative-probability roll) and `drawPack(pool, odds, count=5)`.
+- `drawPack` buckets active pool cards by `rarity_tier`, rolls a type per slot, and picks a card from that bucket weighted by `cards.weight` (default 10). Avoids repeats **within a single pack**; duplicates across packs are allowed.
+- **Fallback chain** for a sparse/incomplete pool: rolled type → other types in the pack's odds → any active card → (only if a non-empty pool is fully used) a within-pack duplicate → placeholder only when the pool is truly empty. A non-empty pool always yields 5 real cards.
+
+### Wired the draw + album grant
+- **Rewrote** `buildCards()` in `src/lib/components/PackFocusOverlay.svelte` to call `drawPack($pool, pack.odds, 5)`; `loadPool()` is called `onMount`. Cards now carry real `photo_url`, `title`, `cardNumber`, and `cardId`.
+- **Fixed** the no-op `on:done={() => {}}` → `on:done={onDone}`, which calls the new `collection.grantMany(openCards, $user.id)`. Opened cards now actually land in the album.
+- **Added** `collection.grantMany(cards, userId)` (`src/lib/stores/collection.js`) — loops the existing `add_to_collection` RPC (skips placeholders without a `cardId`) then refreshes the collection once.
+- **Updated** the album rarity filter (`src/routes/album/+page.svelte`) to drop the `epic` chip.
+
+---
+
 ## 2026-06-02 — Vercel deploy, login fix & seed sync
 
 ### Vercel deployment (production)
