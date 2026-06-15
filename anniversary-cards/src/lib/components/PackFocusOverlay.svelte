@@ -34,6 +34,12 @@
     return drawPack(get(pool), pack.odds, 5);
   }
 
+  function preloadImages(cards) {
+    for (const c of cards) {
+      if (c.photo && !c.photo.startsWith('/')) new Image().src = c.photo;
+    }
+  }
+
   function openPack() {
     error = '';
     const usedFree = freePacks.use($user.id);
@@ -42,6 +48,7 @@
       if (!ok) { error = `לא מספיק ♥ לבבות (נדרש: ${pack.cost})`; return; }
     }
     openCards = buildCards();
+    preloadImages(openCards); // kick off image fetches before the tear animation starts
     phase = 'opening';
   }
 

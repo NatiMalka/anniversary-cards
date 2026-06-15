@@ -50,16 +50,17 @@
 
 <main>
   <header class="album-head">
-    <div class="head-text">
-      <h1>האלבום</h1>
-      <p class="counter">
-        <span class="num">{$collectedCount}</span> / {TOTAL} קלפים נאספו
-      </p>
+    <div class="head-row">
+      <div class="head-text">
+        <h1>האלבום</h1>
+        <p class="counter">
+          <span class="num">{$collectedCount}</span> / {TOTAL} קלפים נאספו
+        </p>
+      </div>
+      <button class="btn btn-ghost btn-sm clear-btn" on:click={clearCollection} title="נקה אלבום">
+        🗑 נקה
+      </button>
     </div>
-    <button class="btn btn-ghost btn-sm clear-btn" on:click={clearCollection} title="נקה אלבום">
-      🗑 נקה
-    </button>
-
     <div class="progress-wrap">
       <div class="progress-bar" style="width:{($collectedCount / TOTAL) * 100}%"></div>
     </div>
@@ -156,12 +157,13 @@
 {/if}
 
 <style>
-  main { max-width: 1300px; margin: 0 auto; padding: clamp(1rem, 3vw, 2rem); }
+  main { max-width: 1300px; margin: 0 auto; padding: clamp(1rem, 3vw, 2rem); padding-top: calc(var(--nav-top-h) + clamp(1rem, 3vw, 2rem)); padding-bottom: calc(var(--nav-bot-h) + 2rem); }
   .loading-msg { text-align: center; color: var(--ink-dim); padding: var(--sp-8) 0; }
 
-  .album-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
-  .clear-btn { flex-shrink: 0; align-self: flex-start; }
-  .head-text { display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+  .album-head { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.5rem; }
+  .head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+  .clear-btn { flex-shrink: 0; }
+  .head-text { display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
   .album-head h1 { font-size: clamp(1.6rem, 4vw, 2.4rem); margin: 0; }
   .counter { margin: 0; color: var(--ink-dim); font-size: 1rem; }
   .counter .num { font-size: 1.5rem; font-weight: 900; color: var(--gold, #f5c451); }

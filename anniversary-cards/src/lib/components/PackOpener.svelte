@@ -110,7 +110,7 @@
 	function nextCard() {
 		index += 1;
 		if (index < cards.length) showCurrent();
-		else after(50, () => { phase = 'done'; dispatch('done'); });
+		else { phase = 'done'; after(50, () => dispatch('done')); }
 	}
 
 	function curDown(e) {
@@ -199,15 +199,12 @@
 			>
 				<div class="pack">
 					<div class="pack__glow" style="--p:{tearProgress}"></div>
-					<img class="pack__body" src={packImage} alt="" draggable="false" style="object-position:{packImagePosition}" />
-					<img
+					<div class="pack__body" style="background-image:url({packImage});background-position:{packImagePosition}"></div>
+					<div
 						class="pack__top"
 						class:settle={tearSettle}
-						src={packImage}
-						alt=""
-						draggable="false"
-						style="--p:{tearProgress}; object-position:{packImagePosition}"
-					/>
+						style="--p:{tearProgress};background-image:url({packImage});background-position:{packImagePosition}"
+					></div>
 				</div>
 				{#if phase === 'idle'}<div class="hint">גררו ימינה כדי לקרוע ✂️</div>{/if}
 			</div>
@@ -228,7 +225,7 @@
 						class="pile"
 						style="transform: translate(-50%,-50%) translate({(k + 1) * 7}px, {(k + 1) * 9}px) scale({0.97 - k * 0.02}) rotate({(k + 1) * 1.5}deg); z-index:{10 - k};"
 					>
-						<img src={packImage} alt="" draggable="false" style="object-position:{packImagePosition}" />
+						<div class="pile-bg" style="background-image:url({packImage});background-position:{packImagePosition}"></div>
 					</div>
 				{/each}
 
@@ -240,7 +237,7 @@
 						style="transform: {curTransform}; z-index: 50;"
 					>
 						<div class="flip" class:front={faceUp}>
-							<div class="face face--back"><img src={packImage} alt="" draggable="false" style="object-position:{packImagePosition}" /></div>
+							<div class="face face--back"><div class="pack-back-bg" style="background-image:url({packImage});background-position:{packImagePosition}"></div></div>
 							<div class="face face--front">
 								<CardFront
 									effect={cards[index].effect}
@@ -361,7 +358,8 @@
 		inset: 0;
 		width: 100%;
 		height: 100%;
-		object-fit: cover;
+		background-size: 300% auto;
+		background-repeat: no-repeat;
 		border-radius: 14px;
 		box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(245, 196, 81, 0.25);
 		user-select: none;
@@ -425,10 +423,11 @@
 		box-shadow: 0 18px 40px -16px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(245, 196, 81, 0.25);
 		opacity: 0.85;
 	}
-	.pile img {
+	.pile-bg {
 		width: 100%;
 		height: 100%;
-		object-fit: cover;
+		background-size: 300% auto;
+		background-repeat: no-repeat;
 	}
 	.current {
 		transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -465,10 +464,11 @@
 		overflow: hidden;
 		box-shadow: 0 20px 45px -15px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(245, 196, 81, 0.3);
 	}
-	.face--back img {
+	.pack-back-bg {
 		width: 100%;
 		height: 100%;
-		object-fit: cover;
+		background-size: 300% auto;
+		background-repeat: no-repeat;
 	}
 	.swipe-hint {
 		position: absolute;

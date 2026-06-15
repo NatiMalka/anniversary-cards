@@ -88,8 +88,8 @@ export const collection = {
   },
 
   async reset(userId) {
-    const { error } = await supabase.from('user_collection').delete().eq('user_id', userId);
-    if (!error) collectionStore.set({});
+    collectionStore.set({});
+    await supabase.from('user_collection').delete().eq('user_id', userId);
   }
 };
 
