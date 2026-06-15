@@ -176,6 +176,16 @@
 		return { x: Math.cos(a) * dist, y: Math.sin(a) * dist, d: 0.6 + (i % 4) * 0.18, delay: (i % 6) * 0.02 };
 	});
 
+	/* tear guide — matches the clip-path zigzag exactly */
+	const TEAR_PTS = [[0,13],[10,20],[20,14],[30,21],[40,14],[50,20],[60,14],[70,21],[80,14],[90,20],[100,15]];
+	function tearY(x) {
+		for (let i = 0; i < TEAR_PTS.length - 1; i++) {
+			const [x1,y1] = TEAR_PTS[i], [x2,y2] = TEAR_PTS[i+1];
+			if (x >= x1 && x <= x2) return y1 + (x-x1)/(x2-x1)*(y2-y1);
+		}
+		return 16;
+	}
+
 	onDestroy(clearTimers);
 </script>
 
@@ -205,6 +215,55 @@
 						class:settle={tearSettle}
 						style="--p:{tearProgress};background-image:url({packImage});background-position:{packImagePosition}"
 					></div>
+
+					<!-- Tear guide line -->
+					<svg class="tear-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+						<defs>
+							<filter id="tg-outer" x="-40%" y="-400%" width="180%" height="900%">
+								<feGaussianBlur stdDeviation="2.8"/>
+							</filter>
+							<filter id="tg-mid" x="-20%" y="-250%" width="140%" height="600%">
+								<feGaussianBlur stdDeviation="1.1"/>
+							</filter>
+							<filter id="tg-spark" x="-600%" y="-600%" width="1300%" height="1300%">
+								<feGaussianBlur stdDeviation="2.2" result="b"/>
+								<feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+							</filter>
+						</defs>
+
+						<!-- Idle hint: subtle dashed pulse -->
+						<polyline class="tl-hint"
+							points="0,13 10,20 20,14 30,21 40,14 50,20 60,14 70,21 80,14 90,20 100,15"/>
+
+						<!-- Outer diffuse gold glow (reveals L→R) -->
+						<polyline class="tl-outer"
+							points="0,13 10,20 20,14 30,21 40,14 50,20 60,14 70,21 80,14 90,20 100,15"
+							pathLength="120"
+							style="stroke-dashoffset:{(120*(1-tearProgress)).toFixed(2)}"
+							filter="url(#tg-outer)"/>
+
+						<!-- Mid warm glow -->
+						<polyline class="tl-mid"
+							points="0,13 10,20 20,14 30,21 40,14 50,20 60,14 70,21 80,14 90,20 100,15"
+							pathLength="120"
+							style="stroke-dashoffset:{(120*(1-tearProgress)).toFixed(2)}"
+							filter="url(#tg-mid)"/>
+
+						<!-- Bright white core -->
+						<polyline class="tl-core"
+							points="0,13 10,20 20,14 30,21 40,14 50,20 60,14 70,21 80,14 90,20 100,15"
+							pathLength="120"
+							style="stroke-dashoffset:{(120*(1-tearProgress)).toFixed(2)}"/>
+
+						<!-- Moving spark at the tear tip -->
+						{#if tearProgress > 0.01 && tearProgress < 0.99}
+							<circle class="tl-spark"
+								cx={tearProgress * 100}
+								cy={tearY(tearProgress * 100)}
+								r="1.4"
+								filter="url(#tg-spark)"/>
+						{/if}
+					</svg>
 				</div>
 				{#if phase === 'idle'}<div class="hint">גררו ימינה כדי לקרוע ✂️</div>{/if}
 			</div>
@@ -619,5 +678,73 @@
 	}
 	@media (prefers-reduced-motion: reduce) {
 		.pack-wrap, .pack__glow, .hint, .rays, .swipe-hint { animation: none !important; }
+	}
+
+	/* ── Tear guide line ─────────────────────────────────── */
+	.tear-svg {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		overflow: visible;
+		pointer-events: none;
+		z-index: 6;
+	}
+
+	/* Subtle idle dashed hint — tells user where to tear */
+	.tl-hint {
+		fill: none;
+		stroke: rgba(245, 196, 81, 0.32);
+		stroke-width: 0.45;
+		stroke-dasharray: 1.6 2.6;
+		animation: tlHintPulse 2.4s ease-in-out infinite;
+	}
+
+	/* Outer diffuse gold glow (L→R reveal) */
+	.tl-outer {
+		fill: none;
+		stroke: rgba(245, 196, 81, 0.6);
+		stroke-width: 4.5;
+		stroke-dasharray: 120;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+	}
+
+	/* Mid warm glow */
+	.tl-mid {
+		fill: none;
+		stroke: rgba(255, 222, 100, 0.85);
+		stroke-width: 1.8;
+		stroke-dasharray: 120;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+	}
+
+	/* Bright white razor core */
+	.tl-core {
+		fill: none;
+		stroke: rgba(255, 255, 255, 0.96);
+		stroke-width: 0.45;
+		stroke-dasharray: 120;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+	}
+
+	/* Moving spark at the tip */
+	.tl-spark {
+		fill: white;
+		animation: tlSparkPulse 0.18s ease-in-out infinite alternate;
+	}
+
+	@keyframes tlHintPulse {
+		0%, 100% { opacity: 0.55; }
+		50%       { opacity: 1; }
+	}
+	@keyframes tlSparkPulse {
+		from { opacity: 0.8; r: 1.2; }
+		to   { opacity: 1;   r: 1.7; }
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.tl-hint, .tl-spark { animation: none; }
 	}
 </style>
