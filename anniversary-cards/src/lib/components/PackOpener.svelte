@@ -711,6 +711,16 @@
 		0% { opacity: 0; transform: translateY(20px) scale(0.8); }
 		100% { opacity: 1; transform: translateY(0) scale(1); }
 	}
+	/* On narrow phones the 3+2 grid can't fit 3 cards per row at 150px, so the
+	   grid collapses to 2 per row (3 rows) and the action buttons fall below the
+	   non-scrollable scene. Shrink cards to 28vw so 3 always fit in one row. */
+	@media (max-width: 600px) {
+		.grid { gap: clamp(0.35rem, 2vw, 0.75rem); padding: 0.4rem; }
+		.grid-cell { width: clamp(88px, 28vw, 140px); }
+		.actions { gap: 0.6rem; }
+		.again { padding: 0.65rem 1.1rem; font-size: 0.9rem; }
+	}
+
 	@media (prefers-reduced-motion: reduce) {
 		.pack-wrap, .pack__glow, .hint, .rays, .swipe-hint { animation: none !important; }
 	}
