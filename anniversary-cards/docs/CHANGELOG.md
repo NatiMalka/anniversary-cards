@@ -4,6 +4,70 @@ All notable progress on the Anniversary Cards app. Newest first.
 
 ---
 
+## 2026-06-17 — Album reveal: stable card sizing + "המשך" gate
+
+Polishing the album-reveal overlay (the cinematic land-into-slots sequence). Two issues reported from a screen recording: cards visibly **resized** (shrank/grew/centred-mini) inside their slots during and after landing, and the overlay **auto-navigated home** the moment the last card landed.
+
+### Bug fix: cards no longer resize in the reveal overlay
+- **Root cause (sizing):** `Card.svelte` always renders its rotator as a live `<button>` with click/pointer handlers — the `interactive` prop on `AlbumSlot` gates the *slot* wrapper but is **not** forwarded to `Card`. So a tap/scroll on a thumbnail could still fire the holo springs; `popover()`/`retreat()` then wrote `--card-scale`/`--translate` inline (the popover spring is underdamped and overshoots), leaving a card scaled down and re-centred inside its slot. Locking the CSS *variables* to rest values wasn't reliable against this.
+- **Fix:** override the **transform itself** on the engine's transform layers, which beats the engine's non-`!important` `transform: …scale(var(--card-scale))` regardless of any inline variable:
+  ```css
+  .slot-card :global(.card__translater),
+  .slot-card :global(.card__rotator) { transform: none !important; }
+  ```
+  Applied in both `AlbumSlot.svelte` (every slot card — also hardens the `/album` thumbnails, which were already at rest so no visual change) and `AlbumReveal.svelte` (the flying clone's inner layers; the `.flying-card` wrapper still owns the slide). Also pinned `pointer-events: none` on `.card__rotator` (base.css re-enables it to `auto`) so thumbnails can't be activated at all.
+
+### `AlbumReveal.svelte` — pure-translate flight (no shrink during the slide)
+- **Replaced** the FLIP `translate()+scale()` with a **translation-only** flight. The clone is sized to the exact target slot (`width` + `height`) and stays at scale 1 from takeoff to landing, so it fills the slot at full size the whole time. The previous `scale(s)` (where `s = from.width/to.width`) scaled the clone toward the slot during flight — the visible shrink/grow the user disliked.
+
+### `AlbumReveal.svelte` — "המשך ←" button instead of auto-navigation
+- **Added** an `animationDone` flag. The `onMount` sequence no longer `dispatch('done')`s automatically; it sets `animationDone = true`, which reveals a sticky gold **"המשך ←"** button (fade-up in). `dispatch('done')` fires only on click — `PackFocusOverlay` still wires `on:done={goHome}`, so navigation home is now user-gated.
+
+---
+
+## 2026-06-16 — Cinematic album reveal after pack opening
+
+### Album reveal flow (end-to-end)
+Full cinematic bridge between the pack summary screen and the album. After swiping all 5 cards, a gold **"המשך →"** button appears. Clicking it grants the cards to the collection, then launches a full-screen reveal overlay: the album grid appears (already-owned cards in their slots, new slots empty), and each new card morphs from its summary position into its numbered album slot one-by-one. When the last card lands the app navigates home (`/`).
+
+### New component: `src/lib/components/AlbumSlot.svelte`
+- **Extracted** the slot tile into a shared component used by both `/album` and the reveal overlay, so both contexts render owned cards identically.
+- **Props:** `n`, `card`, `dim`, `interactive` (default `true`), `hidden` (renders empty branch even when a card is set — used by the reveal to keep a slot blank until its card lands), `justRevealed` (shows a gold "חדש" badge with a spring pop animation).
+- **Adds** `data-slot={n}` on the root element so the reveal animation can `querySelector` the target slot.
+- **Moved** all slot CSS (`.slot`, `.slot--filled`, `.slot--empty`, `.slot-num`, `.slot-card`, hover/dim rules) out of the album page and into this component.
+- **Hides** `.card__shine`, `.card__glare`, and `.card__back` on thumbnails via `:global()` — prevents the blue Pokémon back-face from z-fighting the front during transforms.
+
+### New component: `src/lib/components/AlbumReveal.svelte`
+- **Full-screen overlay** (`position:fixed; z-index:9100`) showing the 100-slot album grid; dispatches `done` when the sequence finishes.
+- **GPU-composited FLIP animation** — the flying clone is anchored at the *target* box (`left/top/width` fixed, sized to slot) and animated to identity via `transform: translate()+scale()` only, so zero layout recalculations per frame. Uses `tweened(0→1, cubicOut, 620ms)` from `svelte/motion`.
+- **Sequence per card** (`onMount` loop): (1) `scrollIntoView({ block:'center' })` on the target slot, settle 420ms; (2) re-measure target rect after scroll; (3) set `flying`, snap tween to 0, `await t.set(1)` for the morph; (4) add slot to `revealedSlots` (slot fills), play card-slide sound, settle 180ms; repeat.
+- **Reduced-motion path:** instant slot fill + sound beat + 220ms settle; `scrollIntoView` uses `behavior:'auto'`.
+- **`onDestroy`** clears all timers so no stale callbacks fire if the user closes early.
+- **Flying-clone CSS** hides back face and holo effects (`display:none !important`) to prevent blue flickering; `will-change:transform` keeps it on its own GPU layer.
+
+### `PackOpener.svelte` — "המשך" button + source rect capture
+- **Added** a gold-styled **"המשך →"** primary button in the `phase==='done'` actions block, beside the existing "פתחו חבילה נוספת" reset button.
+- **`onContinue()`** deduplicates new cards by `cardNumber` (a sparse pool can deal the same new card twice; only the first copy should animate), captures each card's `getBoundingClientRect()` from the bound `gridCells[i]` array (synchronously, before the opener unmounts), and `dispatch('continue', { newCards, sourceRects })`.
+
+### `PackFocusOverlay.svelte` — reveal phase + grant timing
+- **Extended** phase union to `'focus' | 'opening' | 'reveal'`.
+- **Moved grant** from `onDone` to `onContinue` — cards are persisted at the moment the user clicks "המשך", so they survive even if the user closes mid-reveal.
+- **`onContinue` logic:** if no new cards → fire-and-forget grant → navigate home immediately; else → `await grantMany` → `phase = 'reveal'`.
+- **Re-entry guard** (`continuing` flag + `try/finally` reset) prevents double-firing if the button is tapped rapidly or the component is reused across HMR sessions.
+- **`goHome()`** fires `goto(base+'/')` un-awaited (instant SPA nav when it works), then after 400ms checks `destroyed` (set by `onDestroy`); if the overlay is still mounted, falls back to `window.location.assign` — guarantees navigation never silently stalls regardless of SPA router state.
+- **Wired** `on:continue={onContinue}` on `<PackOpener>` and `on:done={goHome}` on `<AlbumReveal>`.
+
+### `src/routes/album/+page.svelte` — refactored grid
+- **Replaced** the inlined 100-slot grid loop with `<AlbumSlot>` — slot rendering logic is now fully owned by the shared component.
+- Slot CSS removed from the page (lives in `AlbumSlot.svelte` now).
+
+### Bug fixes
+- **Blue flickering cards in reveal:** `.card__back` (blue, `backface-visibility:visible` in base engine) z-fought the front face during animation. Fixed by `display:none` on `.card__back` inside both `.slot-card` and `.flying-card` via `:global()` selectors.
+- **Layout thrash during FLIP:** original prototype animated `left/top/width/height` causing a reflow every frame. Replaced with transform-only FLIP (`translate()+scale()`) for GPU-composited animation.
+- **Same new card animating twice:** sparse pool can deal duplicate copies of a new card (both `isNew=true`). Fixed by deduping on `cardNumber` in `PackOpener.onContinue`.
+
+---
+
 ## 2026-06-08 — Desktop navigation + card-pool page polish
 
 ### Desktop top-nav (web only)

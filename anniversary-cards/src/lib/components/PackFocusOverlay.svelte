@@ -1,12 +1,15 @@
 <script>
-  import { createEventDispatcher, onMount } from 'svelte';
+  import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import { get }                from 'svelte/store';
+  import { goto }              from '$app/navigation';
+  import { base }              from '$app/paths';
   import { user }              from '$lib/stores/user.js';
   import { wallet, freePacks } from '$lib/stores/wallet.js';
-  import { collection }        from '$lib/stores/collection.js';
-  import { pool, loadPool }    from '$lib/stores/cardPool.js';
+  import { collection, loadCollection } from '$lib/stores/collection.js';
+  import { pool, loadPool }             from '$lib/stores/cardPool.js';
   import ThreePack             from './ThreePack.svelte';
   import PackOpener            from './PackOpener.svelte';
+  import AlbumReveal           from './AlbumReveal.svelte';
   import { drawPack }          from '$lib/packDraw.js';
 
   /**
@@ -20,18 +23,27 @@
 
   const dispatch = createEventDispatcher();
 
-  let phase = 'focus'; // 'focus' | 'opening'
+  let phase = 'focus'; // 'focus' | 'opening' | 'reveal'
   let openCards = [];
+  let revealNewCards = [];
+  let revealSourceRects = [];
   let error = '';
 
   $: free      = freePacks.remaining($user.id);
   $: hearts    = wallet.balance($user.id);
   $: canAfford = free > 0 || hearts >= pack.cost;
 
-  onMount(() => { loadPool(); });
+  onMount(() => {
+    loadPool();
+    if ($user.id) loadCollection($user.id);
+  });
 
   function buildCards() {
-    return drawPack(get(pool), pack.odds, 5);
+    const col = get(collection);
+    return drawPack(get(pool), pack.odds, 5).map(c => ({
+      ...c,
+      isNew: c.cardNumber != null && !col[String(c.cardNumber)]
+    }));
   }
 
   function preloadImages(cards) {
@@ -52,8 +64,49 @@
     phase = 'opening';
   }
 
-  function onDone() {
-    collection.grantMany(openCards, $user.id);
+  // grant now happens on "המשך" (onContinue), so cards persist even if the reveal is interrupted.
+  function onDone() {}
+
+  // If client-side navigation really happens, THIS overlay (inside /packs)
+  // unmounts — so `destroyed` is our reliable signal that goto worked.
+  let destroyed = false;
+  onDestroy(() => { destroyed = true; });
+
+  // Navigate home. Prefer instant client-side navigation (goto); if the overlay
+  // hasn't unmounted shortly after (goto didn't actually transition), force a
+  // hard navigation so we never get stuck. goto is fired un-awaited (can't hang).
+  function goHome() {
+    const home = `${base}/`;
+    goto(home).catch(() => {});
+    if (typeof window !== 'undefined') {
+      setTimeout(() => {
+        if (!destroyed) window.location.assign(home);
+      }, 400);
+    }
+  }
+
+  // Self-resetting guard so it can NEVER get stuck (Svelte preserves component
+  // state across HMR, and this overlay lives across multiple pack opens).
+  let continuing = false;
+  async function onContinue(e) {
+    if (continuing) return;
+    continuing = true;
+    const newCards    = e.detail?.newCards ?? [];
+    revealNewCards    = newCards;
+    revealSourceRects = e.detail?.sourceRects ?? [];
+    try {
+      if (newCards.length === 0) {
+        // nothing to reveal — persist the duplicates in the background, go home now
+        collection.grantMany(openCards, $user.id);
+        goHome();
+      } else {
+        // reveal needs the cards in the store first (so they render in their slots)
+        await collection.grantMany(openCards, $user.id);
+        phase = 'reveal';
+      }
+    } finally {
+      continuing = false;
+    }
   }
 
   function close()      { dispatch('close'); }
@@ -121,8 +174,12 @@
     <!-- ── Pack opener (full-width inside overlay) ─────────────── -->
     <div class="panel opening-panel">
       <button class="btn btn-ghost btn-sm back-floating" on:click={onReset}>← חזרה</button>
-      <PackOpener cards={openCards} {sound} packImage="/pack-images.png" {packImagePosition} on:done={onDone} on:reset={onReset} />
+      <PackOpener cards={openCards} {sound} packImage="/pack-images.png" {packImagePosition} on:done={onDone} on:reset={onReset} on:continue={onContinue} />
     </div>
+
+  {:else if phase === 'reveal'}
+    <!-- ── Album reveal (cards slide into their slots) ──────────── -->
+    <AlbumReveal newCards={revealNewCards} sourceRects={revealSourceRects} {sound} on:done={goHome} />
   {/if}
 
 </div>

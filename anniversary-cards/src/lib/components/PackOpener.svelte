@@ -167,6 +167,23 @@
 	let gridCells = [];
 	$: activeGridIndex = gridCells.findIndex(el => el && $activeCard && el.contains($activeCard));
 
+	/* המשך → capture each NEW summary card's on-screen rect, hand off to the album reveal.
+	   Dedupe by card number so a slot animates once even if the pack held two copies. */
+	function onContinue() {
+		const seen = new Set();
+		const newCards = [];
+		const sourceRects = [];
+		cards.forEach((c, i) => {
+			if (!c.isNew || c.cardNumber == null || seen.has(c.cardNumber)) return;
+			seen.add(c.cardNumber);
+			const el = gridCells[i];
+			const r = el ? el.getBoundingClientRect() : null;
+			newCards.push(c);
+			sourceRects.push(r ? { left: r.left, top: r.top, width: r.width, height: r.height } : null);
+		});
+		dispatch('continue', { newCards, sourceRects });
+	}
+
 	/* particles */
 	const tierParticles = { common: 10, rare: 16, epic: 28, legendary: 44 };
 	$: particleCount = tierParticles[burstTier] || 0;
@@ -295,6 +312,9 @@
 						class:dragging
 						style="transform: {curTransform}; z-index: 50;"
 					>
+						{#if faceUp && cards[index]?.isNew}
+							<div class="new-badge-reveal" dir="rtl">✦ חדש</div>
+						{/if}
 						<div class="flip" class:front={faceUp}>
 							<div class="face face--back"><div class="pack-back-bg" style="background-image:url({packImage});background-position:{packImagePosition}"></div></div>
 							<div class="face face--front">
@@ -327,6 +347,9 @@
 						style="animation-delay:{i * 70}ms; z-index:{activeGridIndex === i ? 1000 : 1};"
 						bind:this={gridCells[i]}
 					>
+						{#if c.isNew}
+							<div class="new-badge-grid" dir="rtl" style="--delay:{i * 70 + 320}ms">חדש</div>
+						{/if}
 						<CardFront
 							effect={c.effect}
 							photo={c.photo}
@@ -358,7 +381,10 @@
 	</div>
 
 	{#if phase === 'done'}
-		<div class="actions"><button class="again" on:click={reset}>פתחו חבילה נוספת 🎴</button></div>
+		<div class="actions">
+			<button class="again continue-btn" on:click={onContinue}>המשך →</button>
+			<button class="again" on:click={reset}>פתחו חבילה נוספת 🎴</button>
+		</div>
 	{:else if phase === 'reveal'}
 		<p class="progress">{Math.min(index + 1, cards.length)} / {cards.length}</p>
 	{/if}
@@ -639,6 +665,15 @@
 		transform: translateY(-2px);
 		background: linear-gradient(135deg, rgba(245, 196, 81, 0.3), rgba(200, 200, 212, 0.2));
 	}
+	.continue-btn {
+		background: linear-gradient(135deg, #c89a1a, #f5c451);
+		border-color: transparent;
+		color: #1a1208;
+		box-shadow: 0 6px 18px rgba(245, 196, 81, 0.35);
+	}
+	.continue-btn:hover {
+		background: linear-gradient(135deg, #d4a521, #ffd472);
+	}
 
 	/* ---------------- KEYFRAMES ---------------- */
 	@keyframes float {
@@ -746,5 +781,101 @@
 	}
 	@media (prefers-reduced-motion: reduce) {
 		.tl-hint, .tl-spark { animation: none; }
+	}
+
+	/* ── "New card" badges ───────────────────────────────────── */
+
+	/* Floating pill centered above the card during reveal */
+	.new-badge-reveal {
+		position: absolute;
+		top: -3.4rem;
+		left: 50%;
+		z-index: 200;
+		overflow: hidden;
+		font-family: 'Heebo', sans-serif;
+		font-size: 0.9rem;
+		font-weight: 800;
+		letter-spacing: 0.07em;
+		white-space: nowrap;
+		padding: 0.42em 1.15em;
+		border-radius: 999px;
+		background: linear-gradient(135deg, rgba(8,4,18,0.94) 0%, rgba(16,9,28,0.9) 100%);
+		border: 1px solid rgba(245,196,81,0.65);
+		color: #f5c451;
+		box-shadow:
+			0 0 14px rgba(245,196,81,0.55),
+			0 0 34px rgba(245,196,81,0.2),
+			0 3px 12px rgba(0,0,0,0.65),
+			inset 0 1px 0 rgba(255,255,255,0.1);
+		pointer-events: none;
+		/* keep translateX(-50%) in every keyframe so it isn't overridden */
+		animation:
+			newRevealPop   0.5s cubic-bezier(0.2, 0.9, 0.3, 1.4) 0.65s both,
+			newRevealPulse 2.6s ease-in-out infinite 1.2s;
+	}
+
+	/* Shimmer sweep */
+	.new-badge-reveal::after {
+		content: '';
+		position: absolute;
+		top: 0; left: -55%;
+		width: 45%; height: 100%;
+		background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+		transform: skewX(-18deg);
+		animation: newRevealShimmer 3s ease-in-out infinite 1.7s;
+	}
+
+	/* Small corner badge on the grid summary */
+	.new-badge-grid {
+		position: absolute;
+		top: -0.72rem;
+		right: -0.38rem;
+		z-index: 20;
+		font-family: 'Heebo', sans-serif;
+		font-size: 0.6rem;
+		font-weight: 800;
+		letter-spacing: 0.06em;
+		white-space: nowrap;
+		padding: 0.22em 0.6em;
+		border-radius: 999px;
+		background: linear-gradient(135deg, rgba(8,4,18,0.93), rgba(16,9,28,0.88));
+		border: 1px solid rgba(245,196,81,0.6);
+		color: #f5c451;
+		box-shadow:
+			0 0 9px rgba(245,196,81,0.55),
+			0 2px 6px rgba(0,0,0,0.55);
+		pointer-events: none;
+		animation: newGridPop 0.44s cubic-bezier(0.2, 0.9, 0.3, 1.4) both;
+		animation-delay: var(--delay, 300ms);
+	}
+
+	@keyframes newRevealPop {
+		from { opacity: 0; transform: translateX(-50%) scale(0.4) translateY(8px); }
+		to   { opacity: 1; transform: translateX(-50%) scale(1)   translateY(0);   }
+	}
+	@keyframes newRevealPulse {
+		0%, 100% {
+			box-shadow:
+				0 0 14px rgba(245,196,81,0.55), 0 0 34px rgba(245,196,81,0.2),
+				0 3px 12px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.1);
+		}
+		50% {
+			box-shadow:
+				0 0 22px rgba(245,196,81,0.9), 0 0 54px rgba(245,196,81,0.38),
+				0 3px 12px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.1);
+		}
+	}
+	@keyframes newRevealShimmer {
+		0%        { left: -55%; }
+		35%, 100% { left: 115%; }
+	}
+	@keyframes newGridPop {
+		from { opacity: 0; transform: scale(0.3) translateY(-6px); }
+		to   { opacity: 1; transform: scale(1)   translateY(0);    }
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.new-badge-reveal, .new-badge-grid { animation: none; opacity: 1; }
+		.new-badge-reveal { transform: translateX(-50%); }
+		.new-badge-reveal::after { display: none; }
 	}
 </style>

@@ -3,6 +3,7 @@
   import { user } from '$lib/stores/user.js';
   import { loadCollection, collection, collectedCount, collectionYears } from '$lib/stores/collection.js';
   import CardFront from '$lib/components/CardFront.svelte';
+  import AlbumSlot from '$lib/components/AlbumSlot.svelte';
   import { TIER_LABELS } from '$lib/effects.js';
 
   const TOTAL    = 100;
@@ -91,33 +92,12 @@
 
     <div class="grid">
       {#each ALL_SLOTS as n}
-        {@const card = slotCard(n, $collection)}
-        {#if card}
-          <button class="slot slot--filled" on:click={() => openModal(card)}>
-            <div class="slot-num">{n}</div>
-            <div class="slot-card">
-              <CardFront
-                effect={card.effect}
-                photo={card.photo}
-                title={card.title}
-                date={card.date}
-                description={card.description}
-                rarityTier={card.rarityTier}
-                isFlat={card.isFlat}
-                showFrame={card.showFrame ?? false}
-                frameColor={card.frameColor ?? '#f5c451'}
-              />
-            </div>
-            {#if card.count > 1}
-              <div class="slot-count">×{card.count}</div>
-            {/if}
-          </button>
-        {:else}
-          <div class="slot slot--empty" class:dim={activeTier !== 'all' || activeYear !== 'all'}>
-            <span class="slot-num">{n}</span>
-            <div class="empty-art"><div class="empty-diamond"></div></div>
-          </div>
-        {/if}
+        <AlbumSlot
+          {n}
+          card={slotCard(n, $collection)}
+          dim={activeTier !== 'all' || activeYear !== 'all'}
+          on:open={(e) => openModal(e.detail)}
+        />
       {/each}
     </div>
   {/if}
@@ -178,22 +158,6 @@
   .tier-chip.active { color: #fff; font-weight: 700; }
 
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: clamp(0.6rem, 1.5vw, 1.25rem); }
-
-  .slot { position: relative; aspect-ratio: 0.718; border-radius: 8px; overflow: visible; }
-  .slot-num { position: absolute; top: 6px; right: 8px; z-index: 4; font-size: 0.65rem; font-weight: 700; color: rgba(255,255,255,0.55); letter-spacing: 0.04em; pointer-events: none; }
-
-  .slot--empty { background: linear-gradient(145deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015)); border: 1px solid rgba(255,255,255,0.09); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: default; transition: opacity 0.2s; }
-  .slot--empty.dim { opacity: 0.3; }
-  .empty-art { display: flex; align-items: center; justify-content: center; flex: 1; padding-bottom: 1rem; }
-  .empty-diamond { width: 28%; aspect-ratio: 1; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); transform: rotate(45deg); border-radius: 3px; }
-
-  .slot--filled { background: none; border: none; padding: 0; cursor: pointer; transition: transform 0.2s ease, filter 0.2s ease; }
-  .slot--filled:hover { transform: translateY(-4px) scale(1.03); filter: drop-shadow(0 8px 20px rgba(245,196,81,0.3)); z-index: 10; }
-  .slot-card { width: 100%; height: 100%; pointer-events: none; }
-  .slot--filled :global(.card) { pointer-events: none !important; }
-  .slot-card :global(.card__shine), .slot-card :global(.card__glare) { display: none !important; }
-  .slot-card :global(.card:not(.interactive):hover) { --card-opacity: 0 !important; --card-scale: 1 !important; --translate-y: 0px !important; }
-  .slot-count { position: absolute; bottom: 6px; left: 6px; z-index: 5; font-size: 0.6rem; font-weight: 700; padding: 0.15em 0.45em; border-radius: 999px; background: rgba(0,0,0,0.55); color: var(--gold,#f5c451); pointer-events: none; }
 
   .modal-backdrop { position: fixed; inset: 0; z-index: 9000; background: rgba(10,4,22,0.82); backdrop-filter: blur(6px); display: grid; place-items: center; padding: 1rem; }
   .modal-inner { position: relative; display: flex; flex-direction: column; align-items: center; gap: 1.25rem; max-width: 480px; width: 100%; animation: popIn 0.35s cubic-bezier(0.2,0.9,0.3,1.2); }
