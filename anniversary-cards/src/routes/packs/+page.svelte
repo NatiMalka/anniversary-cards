@@ -1,8 +1,10 @@
 <script>
+  import { onMount } from 'svelte';
   import { page } from '$app/stores';
   import { user, isAdmin } from '$lib/stores/user.js';
   import { wallet, freePacks } from '$lib/stores/wallet.js';
   import { PACK_TYPES } from '$lib/packs.js';
+  import { loadPool } from '$lib/stores/cardPool.js';
   import PackFocusOverlay from '$lib/components/PackFocusOverlay.svelte';
   import PackSelectorRow from '$lib/components/PackSelectorRow.svelte';
   import { RefreshCw } from '@lucide/svelte';
@@ -10,6 +12,10 @@
   const initType = $page.url.searchParams.get('type');
   let focusedPack = initType && PACK_TYPES[initType] ? PACK_TYPES[initType] : null;
   let sound = true;
+
+  // Warm the card pool as soon as the packs page loads, so opening a pack is
+  // instant (no blocking fetch on the "open" tap — this was the slow regression).
+  onMount(() => { loadPool(); });
 
   $: free   = freePacks.remaining($user.id);
   $: hearts = wallet.balance($user.id);

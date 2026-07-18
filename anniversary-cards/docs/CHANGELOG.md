@@ -68,6 +68,17 @@ Full cinematic bridge between the pack summary screen and the album. After swipi
 
 ---
 
+## 2026-06-08 — Faster pack open + image loading
+
+### Pack open no longer blocks on the pool fetch
+- **Fixed** the slow "open pack" tap: the pool is now **preloaded on `/packs` mount** (`src/routes/packs/+page.svelte`), so by the time you pick a pack it's already in memory and opening is instant. The `await loadPool()` in `openPack` remains only as a rare fallback.
+- **Cached** `loadPool()` (`src/lib/stores/cardPool.js`): it fetches once, shares a single in-flight request across concurrent callers, and returns instantly thereafter (pass `force` to refresh). Removes duplicate pool fetches across the packs/overlay/album/pool pages.
+
+### Smaller, faster card images
+- **Added** `compressImage()` (`src/lib/utils.js`): resizes the longest edge to ≤1200px and re-encodes **WebP @ 0.82** in-browser, falling back to the original if it can't beat it.
+- **Editor** now compresses photos before upload (`src/routes/admin/card-editor/+page.svelte`) with the correct `contentType`, so newly saved cards are a fraction of the original size — much faster to load in the album, pack reveal, and card pool. _(Existing large cards: re-save them in the editor to shrink.)_
+- **Added** `loading="lazy"` + `decoding="async"` to card photos (`src/lib/components/CardFront.svelte`) so off-screen thumbnails don't block and images decode off the main thread.
+
 ## 2026-06-08 — Desktop navigation + card-pool page polish
 
 ### Desktop top-nav (web only)

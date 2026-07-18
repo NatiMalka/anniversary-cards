@@ -34,7 +34,7 @@
 	{#if showFrame}
 		<div class="ann-frame-wrap" style="--ann-fc:{frameColor};">
 			{#if photo}
-				<img class="ann-photo-art" src={photo} alt={title || 'תמונת קלף'} />
+				<img class="ann-photo-art" src={photo} alt={title || 'תמונת קלף'} loading="lazy" decoding="async" />
 			{:else}
 				<div class="ann-photo-art ann-photo--empty" aria-hidden="true">
 					<span>העלו תמונה</span>
@@ -43,7 +43,7 @@
 		</div>
 	{:else}
 		{#if photo}
-			<img class="ann-photo" src={photo} alt={title || 'תמונת קלף'} />
+			<img class="ann-photo" src={photo} alt={title || 'תמונת קלף'} loading="lazy" decoding="async" />
 		{:else}
 			<div class="ann-photo ann-photo--empty" aria-hidden="true">
 				<span>העלו תמונה</span>

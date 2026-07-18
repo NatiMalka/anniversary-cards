@@ -4,6 +4,7 @@
   import { savePool, getByNumber } from '$lib/stores/cardPool.js';
   import { supabase } from '$lib/supabase.js';
   import { EFFECTS, EFFECT_IDS, TIER_LABELS } from '$lib/effects.js';
+  import { compressImage } from '$lib/utils.js';
   import CardFront from '$lib/components/CardFront.svelte';
 
   let editMode = false;
@@ -102,11 +103,12 @@
     let photoUrl = form.photo;
 
     if (selectedFile) {
-      const ext  = (selectedFile.name.split('.').pop() || 'jpg').toLowerCase();
+      // shrink + WebP-compress before upload so cards load fast everywhere
+      const { blob, ext, type } = await compressImage(selectedFile, 1200, 0.82);
       const path = `cards/${form.cardNumber}_${Date.now()}.${ext}`;
       const { error: uploadError } = await supabase.storage
         .from('card-photos')
-        .upload(path, selectedFile, { upsert: true });
+        .upload(path, blob, { upsert: true, contentType: type });
       if (!uploadError) {
         const { data: { publicUrl } } = supabase.storage.from('card-photos').getPublicUrl(path);
         photoUrl = publicUrl;

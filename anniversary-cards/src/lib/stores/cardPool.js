@@ -6,13 +6,30 @@ const poolStore = writable(/** @type {any[]} */ ([]));
 
 export const pool = { subscribe: poolStore.subscribe };
 
-export async function loadPool() {
+let loaded = false;
+let inflight = /** @type {Promise<void> | null} */ (null);
+
+/**
+ * Load the card pool once and cache it. Concurrent callers share the same
+ * in-flight request; later callers return instantly from cache.
+ * @param {boolean} [force] re-fetch even if already cached
+ */
+export async function loadPool(force = false) {
   if (!browser) return;
-  const { data, error } = await supabase
-    .from('cards')
-    .select('*')
-    .order('card_number');
-  if (!error && data) poolStore.set(data);
+  if (loaded && !force) return;
+  if (inflight) return inflight;
+  inflight = (async () => {
+    const { data, error } = await supabase
+      .from('cards')
+      .select('*')
+      .order('card_number');
+    if (!error && data) {
+      poolStore.set(data);
+      loaded = true;
+    }
+    inflight = null;
+  })();
+  return inflight;
 }
 
 /**
