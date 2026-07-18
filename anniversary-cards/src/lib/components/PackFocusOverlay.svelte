@@ -52,8 +52,26 @@
     }
   }
 
-  function openPack() {
+  let opening = false;
+  async function openPack() {
+    if (opening) return;
     error = '';
+
+    // Make sure the card pool is loaded before drawing. On mount loadPool() is
+    // fired but not awaited; in prod the Supabase round-trip can still be in
+    // flight when the user taps "open", which would draw placeholder cards
+    // (the /pack-image.png fallback) instead of the real photos. Localhost is
+    // fast enough to usually win this race — hence the dev/prod discrepancy.
+    if (get(pool).length === 0) {
+      opening = true;
+      await loadPool();
+      opening = false;
+    }
+    if (get(pool).length === 0) {
+      error = 'לא נמצאו קלפים בבריכה';
+      return;
+    }
+
     const usedFree = freePacks.use($user.id);
     if (!usedFree) {
       const ok = wallet.debit($user.id, pack.cost);
@@ -157,11 +175,11 @@
 
       <button
         class="btn btn-gold btn-lg open-btn"
-        disabled={!canAfford}
+        disabled={!canAfford || opening}
         on:click={openPack}
         aria-label="פתחי חבילה {pack.label}"
       >
-        ✨ פתחי {pack.label}
+        {opening ? 'טוען...' : `✨ פתחי ${pack.label}`}
       </button>
 
       {#if !canAfford}
